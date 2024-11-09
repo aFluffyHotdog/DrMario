@@ -1,5 +1,5 @@
 Dr. Mario coded in Assembly, to be turned in as the final project for CSC258, Computer Organization. 
-by Mac and Kenaz
+Made by Kenaz and Mac
 
 Milestones:
 - [ ] Draw the scene
