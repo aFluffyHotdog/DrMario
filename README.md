@@ -2,7 +2,8 @@ Dr. Mario coded in Assembly, to be turned in as the final project for CSC258, Co
 Made by Kenaz and Mac
 
 Milestones:
-- [ ] Draw the scene
+- [x] Draw the scene
+- [ ] Draw pill of random color
 - [ ] Implement movement and rotation
 - [ ] Collision detection
 - [ ] Game features #1 (refer to project handou)
