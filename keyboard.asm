@@ -36,8 +36,7 @@ keyboard_input:                     # A key is pressed
 
     j main
     
-    
-## Movement and Control Functions
+    ## Movement and Control Functions
 move_left: 
 
 move_right:
@@ -46,9 +45,9 @@ rotate:
 
 drop:
 
-respond_to_Q:
+quit:
 	li $v0, 10                      # Quit gracefully
 	syscall
 	
-	
+
 
