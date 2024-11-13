@@ -39,8 +39,12 @@ ADDR_KBRD:
     # Run the game.
 main:
     # Initialize the game
+    j game_loop
 
 game_loop:
+    .include "bitmap_display.asm"
+    .include "keyboard.asm"
+    
     # 1a. Check if key has been pressed
     # 1b. Check which key has been pressed
     # 2a. Check for collisions

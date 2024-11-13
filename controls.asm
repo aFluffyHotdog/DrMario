@@ -26,17 +26,19 @@ keyboard_input:                     # A key is pressed
     
     ## Movement and Control Scanner ##
     # Move left 
-    beq $a0, 0x57, move_left     # Check if the key W was pressed
+    beq $a0, 0x87, move_left     # Check if the key W was pressed
     # Move right
-    beq $a0, 0x41, move_right     # Check if the key A was pressed
+    beq $a0, 0x65, move_right     # Check if the key A was pressed
     # Rotate
-    beq $a0, 0x53, rotate     # Check if the key S was pressed
+    beq $a0, 0x83, rotate     # Check if the key S was pressed
     # Drop
-    beq $a0, 0x44, drop     # Check if the key D was pressed
+    beq $a0, 0x68, drop     # Check if the key D was pressed
+    # Quit
+    beq $a0, 0x71, quit     # Check if the key Q was pressed
 
     j main
     
-    ## Movement and Control Functions
+## Movement and Control Functions
 move_left: 
 
 move_right:
