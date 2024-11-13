@@ -43,7 +43,7 @@ main:
 
 game_loop:
     .include "bitmap_display.asm"
-    .include "keyboard.asm"
+    .include "controls.asm"
     
     # 1a. Check if key has been pressed
     # 1b. Check which key has been pressed
