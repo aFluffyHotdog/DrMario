@@ -6,9 +6,9 @@
 ##############################################################################
     .data
 ADDR_KBRD:
-    .word 0xffff0000
+    .word 0xffff0000                # address word for the keyboard
 
-    .text
+    .text 
 	.globl main
 
 main:
@@ -19,17 +19,36 @@ main:
     lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
     lw $t8, 0($t0)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
-    b main
+    j main
 
 keyboard_input:                     # A key is pressed
     lw $a0, 4($t0)                  # Load second word from keyboard
-    beq $a0, 0x71, respond_to_Q     # Check if the key q was pressed
+    
+    ## Movement and Control Scanner ##
+    # Move left 
+    beq $a0, 0x57, move_left     # Check if the key W was pressed
+    # Move right
+    beq $a0, 0x41, move_right     # Check if the key A was pressed
+    # Rotate
+    beq $a0, 0x53, rotate     # Check if the key S was pressed
+    # Drop
+    beq $a0, 0x44, drop     # Check if the key D was pressed
 
-    li $v0, 1                       # ask system to print $a0
-    syscall
+    j main
+    
+    
+## Movement and Control Functions
+move_left: 
 
-    b main
+move_right:
+
+rotate:
+
+drop:
 
 respond_to_Q:
 	li $v0, 10                      # Quit gracefully
 	syscall
+	
+	
+
