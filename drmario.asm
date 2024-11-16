@@ -38,8 +38,11 @@ ADDR_KBRD:
 
     # Run the game.
 main:
+    #################################################################
+    ######### Display Section
+    #################################################################
     # Initialize the game
-    lw $t0, ADDR_DSPL       # Store display address into $t0
+    lw $s0, ADDR_DSPL       # Store display address into $t0
     li $t1, 0xaaaaaa        # Set color of line (grey)
     # Left border
     addi $a0, $zero, 4      # Set X coordinate for starting point
@@ -90,7 +93,10 @@ main:
     addi $a0, $zero, 12     # Set x coordinate for starting point
     addi $a1, $zero, 3     # Set y coordinate for starting point
     jal draw_random_color
-    
+
+    #################################################################
+    ######### Keyboard Section
+    #################################################################
     
     j game_loop
     
@@ -98,9 +104,17 @@ main:
 
 game_loop:
     
-    
     # 1a. Check if key has been pressed
     # 1b. Check which key has been pressed
+    li 		$v0, 32
+	li 		$a0, 1
+	syscall
+	
+    lw $s1, ADDR_KBRD               # $t0 = base address for keyboard
+    lw $t8, 0($s1)                  # Load first word from keyboard
+    beq $t8, 1, keyboard_input      # If first word 1, key is pressed
+    
+    
     # 2a. Check for collisions
 	# 2b. Update locations (capsules)
 	# 3. Draw the screen
@@ -123,10 +137,11 @@ draw_horizontal_line:   # params: a0, a1, a2 (x, y, len) messes with: a0, a1, a2
 
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
 sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
-add $t2, $t0, $a0       # add the X offset to $t0, store in $t2
-add $t2, $t2, $a1       # add the Y offset to $t0, store in $t2
+add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
 sll $a2, $a2, 2         # convert line length to bytes (multiply by 4)
 add $t3, $t2, $a2       # add this offset to $t2 then store in $t3 to figure out when to stop drawing
+
 horizontal_line_start:
 sw $t1, 0($t2)          # draw yellow at current location
 addi $t2, $t2, 4        # move current location by 1 pixel (4 bytes)
@@ -138,20 +153,19 @@ jr $ra
 
 
 draw_vertical_line:     # params: a0, a1, a2 (x, y, len) messes with: a0, a1, a2, t2, t3
-
-
 sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
-add $t2, $t0, $a0       # add the X offset to $t0, store in $t2
-add $t2, $t2, $a1       # add the Y offset to $t0, store in $t2
+add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
 sll $a2, $a2, 7         # calculate the amount of bytes we'll go through ( 2^7 = 128 * rows )
 add $t3, $t2, $a2       # add this offset to $t2 then store in $t3 to figure out when to stop drawing
+
+
 vertical_line_start:
 sw $t1, 0($t2)          # draw yellow at current location
 addi $t2, $t2, 128      # move current location by 1 pixel (4 bytes)
 beq $t2, $t3, vertical_line_end  # break out of look if we've drawn all the pixels in the line
 j vertical_line_start   # jump back to start of loop
-
 
 vertical_line_end:
 jr $ra
@@ -159,8 +173,8 @@ jr $ra
 draw_random_color:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s0, s1 (color)
 sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
-add $t2, $t0, $a0       # add the X offset to $t0, store in $t2
-add $t2, $t2, $a1       # add the Y offset to $t0, store in $t2
+add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
 li $v0 , 42             # let the system know we're randomizing
 li $a0 , 0             # generate random number between 0 and 3
 li $a1 , 3
@@ -187,3 +201,50 @@ jr $ra
 draw_blue:
 sw $t5, 0($t2)
 jr $ra
+
+
+##########################
+### Movement and Controls
+##########################
+keyboard_input:                     # A key is pressed
+    lw $a0, 4($s1)                  # Load second word from keyboard
+    
+    ## Movement and Control Scanner ##
+    # Move left 
+    beq $a0, 0x87, move_left     # Check if the key W was pressed
+    # Move right
+    beq $a0, 0x65, move_right     # Check if the key A was pressed
+    # Rotate
+    beq $a0, 0x83, rotate     # Check if the key S was pressed
+    # Drop
+    beq $a0, 0x68, drop     # Check if the key D was pressed
+    # Quit
+    beq $a0, 0x71, quit     # Check if the key Q was pressed
+
+    j main
+    
+## Functions
+move_left:    
+    addi $s3, $s3, -4        # Shift the x-coordinate of the first pill block by 1 unit to the left
+    addi $s4, $s4, -4        # Shift the x-coordinate of the second pill block by 1 unit to the left
+    j main
+move_right:
+    addi $s3, $s3, 4         # Shift the x-coordinate of the first pill block by 1 unit to the left
+    addi $s4, $s4, 4         # Shift the x-coordinate of the second pill block by 1 unit to the left
+    j main
+rotate:
+
+drop:
+    addi $s3, $s3, 128      # Shift the y-coordinate of the first pill block by 1 unit below
+    addi $s4, $s4, 128      # Shift the y-coordinate of the second pill block by 1 unit below
+    
+quit:
+	li $v0, 10                      # Quit gracefully
+	syscall
+    
+    
+
+
+
+
+
