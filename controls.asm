@@ -48,8 +48,8 @@ rotate:
 drop:
 
 quit:
-	li $v0, 10                      # Quit gracefully
-	syscall
+	# li $v0, 10                      # Quit gracefully
+	# syscall
 	
 
 

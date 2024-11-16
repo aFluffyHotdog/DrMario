@@ -20,11 +20,9 @@ ADDR_DSPL:
 	.globl main
 
 main:
+# Setup
 li $t1, 0xaaaaaa        # Set color of line (yellow)
 lw $t0, ADDR_DSPL       # Store display address into $t0
-# Setup
-
-
 
 
 # Left border
@@ -70,15 +68,18 @@ addi $a1, $zero, 4      # Set Y coordinate for starting point
 addi $a2, $zero, 6     # Set length of line
 jal draw_horizontal_line
 
-addi $a0, $zero, 12     # Set x coordinate for starting point
-addi $a1, $zero, 4     # Set y coordinate for starting point
-jal draw_random_color
-addi $a0, $zero, 12     # Set x coordinate for starting point
-addi $a1, $zero, 3     # Set y coordinate for starting point
-jal draw_random_color
+# addi $a0, $zero, 12     # Set x coordinate for starting point
+# addi $a1, $zero, 4     # Set y coordinate for starting point
+# jal draw_random_color
+# addi $a0, $zero, 12     # Set x coordinate for starting point
+# addi $a1, $zero, 3     # Set y coordinate for starting point
+# jal draw_random_color
+# addi $a0, $zero, 13     # Set x coordinate for starting point
+# addi $a1, $zero, 3     # Set y coordinate for starting point
+# jal draw_random_color
 
-li $v0, 10                  # terminate the program gracefully
-syscall
+# li $v0, 10                  # terminate the program gracefully
+# syscall
 
 draw_horizontal_line:   # params: a0, a1, a2 (x, y, len) messes with: a0, a1, a2, t2, t3
 
