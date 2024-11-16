@@ -3,7 +3,7 @@ Made by Kenaz and Mac
 
 Milestones:
 - [x] Draw the scene
-- [ ] Draw pill of random color
+- [x] Draw pill of random color
 - [ ] Implement movement and rotation
 - [ ] Collision detection
 - [ ] Game features #1 (refer to project handou)
