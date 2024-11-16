@@ -89,10 +89,7 @@ main:
     
     addi $a0, $zero, 12     # Set x coordinate for starting point
     addi $a1, $zero, 4     # Set y coordinate for starting point
-    jal draw_random_color
-    addi $a0, $zero, 12     # Set x coordinate for starting point
-    addi $a1, $zero, 3     # Set y coordinate for starting point
-    jal draw_random_color
+    jal init_pill
 
     #################################################################
     ######### Keyboard Section
@@ -118,11 +115,8 @@ game_loop:
     # 2a. Check for collisions
 	# 2b. Update locations (capsules)
 	# 3. Draw the screen
+	j draw_pill
 	
-	
-    addi $a0, $zero, 12     # Set x coordinate for starting point
-    addi $a1, $zero, 15     # Set y coordinate for starting point
-    jal draw_random_color
 	# 4. Sleep (1/60 second = 166.66... milliseconds
 	li $v0, 32
 	li $a0, 166
@@ -170,11 +164,17 @@ j vertical_line_start   # jump back to start of loop
 vertical_line_end:
 jr $ra
 
-draw_random_color:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s0, s1 (color)
+### Draws the pill at the spawn location and saves the properties of the 2 blocks
+# block 1 color is in $s2
+# block 2 color is in $s3
+# block 1's memory address is in $s4
+# block 2's memory address is in $s5
+init_pill:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s1, s2, s3, s4
 sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
 add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
 add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+add $s4, $t2, $zero     # store block 1's position into $s4
 li $v0 , 42             # let the system know we're randomizing
 li $a0 , 0             # generate random number between 0 and 3
 li $a1 , 3
@@ -194,12 +194,44 @@ beq $a0, $a1 draw_blue          # draw blue if a0 = 2
 
 draw_yellow:
 sw $t3, 0($t2)
-jr $ra
+li $s2, 0xffff00        #store color into $s2
+j init_second_block
 draw_red:
 sw $t4, 0($t2)
-jr $ra
+li $s2, 0xff0000        #store color into $s2
+j init_second_block
 draw_blue:
 sw $t5, 0($t2)
+li $s2, 0x0000ff        #store color into $s2
+j init_second_block
+
+init_second_block:
+addi $t2, $t2, 128      # move to the second block
+add $s5,  $t2, $zero    # store block 2's position in $s5
+li $v0 , 42             # let the system know we're randomizing
+li $a0 , 0             # generate random number between 0 and 3
+li $a1 , 3
+syscall                 # store in $a0
+
+beq $a0, $zero, draw_yellow2     # draw yellow if a0 = 0
+beq $a0, $v0, draw_red2          # draw red if a0 = 1
+beq $a0, $a1 draw_blue2          # draw blue if a0 = 2
+draw_yellow2:
+sw $t3, 0($t2)
+li $s3, 0xffff00        #store color into $s3
+jr $ra
+draw_red2:
+sw $t4, 0($t2)
+li $s3, 0xff0000        #store color into $s3
+jr $ra
+draw_blue2:
+sw $t5, 0($t2)
+li $s3, 0x0000ff        #store color into $s3
+jr $ra
+
+draw_pill:
+sw $s2, 0($s4)          # draw block 1
+sw $s3, 0($s5)          # draw block 1
 jr $ra
 
 
@@ -211,13 +243,13 @@ keyboard_input:                     # A key is pressed
     
     ## Movement and Control Scanner ##
     # Move left 
-    beq $a0, 0x87, move_left     # Check if the key W was pressed
+    beq $a0, 0x77, rotate     # Check if the key W was pressed
     # Move right
-    beq $a0, 0x65, move_right     # Check if the key A was pressed
+    beq $a0, 0x55, move_left     # Check if the key A was pressed
     # Rotate
-    beq $a0, 0x83, rotate     # Check if the key S was pressed
+    beq $a0, 0x73, drop             # Check if the key S was pressed
     # Drop
-    beq $a0, 0x68, drop     # Check if the key D was pressed
+    beq $a0, 0x58, move_right     # Check if the key D was pressed
     # Quit
     beq $a0, 0x71, quit     # Check if the key Q was pressed
 
@@ -225,18 +257,25 @@ keyboard_input:                     # A key is pressed
     
 ## Functions
 move_left:    
-    addi $s3, $s3, -4        # Shift the x-coordinate of the first pill block by 1 unit to the left
-    addi $s4, $s4, -4        # Shift the x-coordinate of the second pill block by 1 unit to the left
-    j main
+    sw $zero, 0($s4)         # clear first block
+    sw $zero, 0($s5)         # clear second block
+    addi $s4, $s4, -4        # Shift the x-coordinate of the first pill block by 1 unit to the left
+    addi $s5, $s5, -4        # Shift the x-coordinate of the second pill block by 1 unit to the left
+    jr $ra
 move_right:
-    addi $s3, $s3, 4         # Shift the x-coordinate of the first pill block by 1 unit to the left
-    addi $s4, $s4, 4         # Shift the x-coordinate of the second pill block by 1 unit to the left
-    j main
+    sw $zero, 0($s4)         # clear first block
+    sw $zero, 0($s5)         # clear second block
+    addi $s4, $s4, 4         # Shift the x-coordinate of the first pill block by 1 unit to the left
+    addi $s5, $s5, 4         # Shift the x-coordinate of the second pill block by 1 unit to the left
+    jr $ra
 rotate:
 
 drop:
-    addi $s3, $s3, 128      # Shift the y-coordinate of the first pill block by 1 unit below
-    addi $s4, $s4, 128      # Shift the y-coordinate of the second pill block by 1 unit below
+    sw $zero, 0($s4)         # clear first block
+    sw $zero, 0($s5)         # clear second block
+    addi $s4, $s4, 128      # Shift the y-coordinate of the first pill block by 1 unit below
+    addi $s5, $s5, 128      # Shift the y-coordinate of the second pill block by 1 unit below
+    jr $ra
     
 quit:
 	li $v0, 10                      # Quit gracefully
