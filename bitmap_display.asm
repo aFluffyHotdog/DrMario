@@ -72,6 +72,10 @@ addi $a0, $zero, 12      # Set X coordinate for starting point
 addi $a1, $zero, 3      # Set Y coordinate for starting point
 jal init_pill
 
+addi $s3, $s3, 512
+addi $s4, $s4, 512
+jal draw_pill
+
 
 # addi $a0, $zero, 12     # Set x coordinate for starting point
 # addi $a1, $zero, 4     # Set y coordinate for starting point
@@ -189,14 +193,6 @@ sw $t5, 0($t2)
 li $s2, 0x0000ff        #store color into $s2
 jr $ra
 
-### Draws the pill at the spawn location and saves the properties of the 2 blocks
-# block 1 color is in $s1
-# block 2 color is in $s2
-# block 1's memory address is in $s3
-# block 2's memory address is in $s4
-# init_pill:  # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, 
-
-# jal draw_random_color
-# add $s1, $zero, $v0         #store first pill's color
-#jal draw_random_color
-
+draw_pill:
+sw $s1, 0($s3)          # draw block 1
+sw $s2, 0($s4)          # draw block 1
