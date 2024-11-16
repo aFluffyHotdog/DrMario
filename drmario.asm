@@ -243,13 +243,13 @@ keyboard_input:                     # A key is pressed
     
     ## Movement and Control Scanner ##
     # Move left 
-    beq $a0, 0x77, rotate     # Check if the key W was pressed
+    beq $a0, 0x77, rotate        # Check if the key W was pressed
     # Move right
-    beq $a0, 0x55, move_left     # Check if the key A was pressed
+    beq $a0, 0x61, move_left     # Check if the key A was pressed
     # Rotate
-    beq $a0, 0x73, drop             # Check if the key S was pressed
+    beq $a0, 0x73, drop          # Check if the key S was pressed
     # Drop
-    beq $a0, 0x58, move_right     # Check if the key D was pressed
+    beq $a0, 0x64, move_right    # Check if the key D was pressed
     # Quit
     beq $a0, 0x71, quit     # Check if the key Q was pressed
 
@@ -269,6 +269,7 @@ move_right:
     addi $s5, $s5, 4         # Shift the x-coordinate of the second pill block by 1 unit to the left
     jr $ra
 rotate:
+    jr $ra
 
 drop:
     sw $zero, 0($s4)         # clear first block
