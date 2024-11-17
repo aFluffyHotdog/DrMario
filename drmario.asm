@@ -113,6 +113,8 @@ game_loop:
     
     
     # 2a. Check for collisions
+    
+    
 	# 2b. Update locations (capsules)
 	# 3. Draw the screen
 	j draw_pill
@@ -257,6 +259,7 @@ keyboard_input:                     # A key is pressed
     
 ## Functions
 move_left:    
+    #call rotation
     sw $zero, 0($s4)         # clear first block
     sw $zero, 0($s5)         # clear second block
     addi $s4, $s4, -4        # Shift the x-coordinate of the first pill block by 1 unit to the left
@@ -270,25 +273,32 @@ move_right:
     jr $ra
     
 rotate:
-    sw $zero, 0($s5)         # clear second block
+    sw $zero, 0($s4)         # clear second block
     #### TODO: Insert the beq logic here ####
-        
+    beq $s6, 0, rotate_1
+    beq $s6, 1, rotate_2
+    beq $s6, 2, rotate_3
+    beq $s6, 3, rotate_4
     jr $ra
     
-rotate_top:
-    addi $s5, $s5, -124      # rotate from right to top
+rotate_1:
+    addi $s4, $s4, 124       # rotate from right to top
+    addi $s6, $zero, 1          # increment rotation state
     jr $ra
     
-rotate_left:
-    addi $s5, $s5, 124       # rotate from top to left
+rotate_2:
+    addi $s4, $s4, 132        # rotate from top to left
+    addi $s6, $zero, 2          # increment rotation state
     jr $ra
     
-rotate_bottom:
-    addi $s5, $s5, 132       # rotate from left to bottom
+rotate_3:
+    addi $s4, $s4, -124        # rotate from left to bottom
+    addi $s6, $zero, 3          # increment rotation state
     jr $ra
 
-rotate_right:
-    addi $s5, $s5, -124       # rotate from bottom to right
+rotate_4:
+    addi $s4, $s4, -132       # rotate from bottom to right
+    addi $s6, $zero, 0          # increment rotation state
     jr $ra
 
 drop:
@@ -298,6 +308,17 @@ drop:
     addi $s5, $s5, 128      # Shift the y-coordinate of the second pill block by 1 unit below
     jr $ra
     
+check_collision:    # load some register to specify direction + 4 or +128 for example
+# unpaint block 1 and block 2
+# add $s4 + offset to $t8
+# add $s5 + offset to $t9
+# check if anything is there at t8 where block 1 is going
+    # check if anything is there at t9  where block 2 is going
+#else
+
+# jump to game loop
+# if not jr $ra
+# else jump to game loop
 quit:
 	li $v0, 10                      # Quit gracefully
 	syscall
