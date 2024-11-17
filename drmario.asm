@@ -268,7 +268,27 @@ move_right:
     addi $s4, $s4, 4         # Shift the x-coordinate of the first pill block by 1 unit to the left
     addi $s5, $s5, 4         # Shift the x-coordinate of the second pill block by 1 unit to the left
     jr $ra
+    
 rotate:
+    sw $zero, 0($s5)         # clear second block
+    #### TODO: Insert the beq logic here ####
+        
+    jr $ra
+    
+rotate_top:
+    addi $s5, $s5, -124      # rotate from right to top
+    jr $ra
+    
+rotate_left:
+    addi $s5, $s5, 124       # rotate from top to left
+    jr $ra
+    
+rotate_bottom:
+    addi $s5, $s5, 132       # rotate from left to bottom
+    jr $ra
+
+rotate_right:
+    addi $s5, $s5, -124       # rotate from bottom to right
     jr $ra
 
 drop:
