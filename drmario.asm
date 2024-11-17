@@ -107,13 +107,13 @@ game_loop:
 	li 		$a0, 1
 	syscall
 	
-    lw $s1, ADDR_KBRD               # $t0 = base address for keyboard
+	lw $s1, ADDR_KBRD               # $s1 = base address for keyboard
     lw $t8, 0($s1)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
     
     
     # 2a. Check for collisions
-    
+        
     
 	# 2b. Update locations (capsules)
 	# 3. Draw the screen
@@ -193,6 +193,7 @@ li $a1 , 2
 beq $a0, $zero, draw_yellow     # draw yellow if a0 = 0
 beq $a0, $v0, draw_red          # draw red if a0 = 1
 beq $a0, $a1 draw_blue          # draw blue if a0 = 2
+jr $ra
 
 draw_yellow:
 sw $t3, 0($t2)
@@ -255,26 +256,42 @@ keyboard_input:                     # A key is pressed
     # Quit
     beq $a0, 0x71, quit     # Check if the key Q was pressed
 
-    j main
+    j game_loop
     
 ## Functions
-move_left:    
-    #call rotation
+move_left:            
     sw $zero, 0($s4)         # clear first block
     sw $zero, 0($s5)         # clear second block
+     
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, -4      # left collision to be used in collision funciton
+    jal collision_check
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not shifting position if there is a collision
+    
     addi $s4, $s4, -4        # Shift the x-coordinate of the first pill block by 1 unit to the left
     addi $s5, $s5, -4        # Shift the x-coordinate of the second pill block by 1 unit to the left
     jr $ra
+
 move_right:
     sw $zero, 0($s4)         # clear first block
     sw $zero, 0($s5)         # clear second block
-    addi $s4, $s4, 4         # Shift the x-coordinate of the first pill block by 1 unit to the left
-    addi $s5, $s5, 4         # Shift the x-coordinate of the second pill block by 1 unit to the left
+    
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, 4      # left collision to be used in collision funciton
+    jal collision_check
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not shifting position if there is a collision
+    
+    addi $s4, $s4, 4         # Shift the x-coordinate of the first pill block by 1 unit to the right
+    addi $s5, $s5, 4         # Shift the x-coordinate of the second pill block by 1 unit to the right
     jr $ra
     
 rotate:
-    sw $zero, 0($s4)         # clear second block
     #### TODO: Insert the beq logic here ####
+    sw $zero, 0($s4)         # clear first block
+    sw $zero, 0($s5)         # clear second block
+    
     beq $s6, 0, rotate_1
     beq $s6, 1, rotate_2
     beq $s6, 2, rotate_3
@@ -282,46 +299,88 @@ rotate:
     jr $ra
     
 rotate_1:
-    addi $s4, $s4, 124       # rotate from right to top
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, -4      # top collision to be used in collision funciton
+    jal collision_check
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not rotating if there is a collision
+    
+    addi $s4, $s4, 124          # rotate from top to left
     addi $s6, $zero, 1          # increment rotation state
     jr $ra
     
 rotate_2:
-    addi $s4, $s4, 132        # rotate from top to left
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, 128      # left collision to be used in collision funciton
+    jal collision_check
+    
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not rotating if there is a collision
+    
+    addi $s4, $s4, 132        # rotate from left to bottom
     addi $s6, $zero, 2          # increment rotation state
     jr $ra
     
 rotate_3:
-    addi $s4, $s4, -124        # rotate from left to bottom
+    
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, 4      # right collision to be used in collision funciton
+    jal collision_check
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not rotating if there is a collision
+    
+    addi $s4, $s4, -124        # rotate from bottom to right
     addi $s6, $zero, 3          # increment rotation state
     jr $ra
 
 rotate_4:
-    addi $s4, $s4, -132       # rotate from bottom to right
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, -128       # top collision to be used in collision funciton
+    jal collision_check
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not rotating position if there is a collision
+    
+    addi $s4, $s4, -132       # rotate from right to top
     addi $s6, $zero, 0          # increment rotation state
     jr $ra
 
 drop:
+    addi $t6, $ra, 0         # store the return address of this function
+    addi $t7, $zero, 128      # bottom collision to be used in collision funciton
+    jal collision_check
+    addi $ra, $t6, 0         # load the return address of this function
+    bne $t9, $zero, return   # early return by not rotating position if there is a collision
+    
     sw $zero, 0($s4)         # clear first block
     sw $zero, 0($s5)         # clear second block
     addi $s4, $s4, 128      # Shift the y-coordinate of the first pill block by 1 unit below
     addi $s5, $s5, 128      # Shift the y-coordinate of the second pill block by 1 unit below
     jr $ra
     
-check_collision:    # load some register to specify direction + 4 or +128 for example
-# unpaint block 1 and block 2
-# add $s4 + offset to $t8
-# add $s5 + offset to $t9
-# check if anything is there at t8 where block 1 is going
-    # check if anything is there at t9  where block 2 is going
-#else
-
-# jump to game loop
-# if not jr $ra
-# else jump to game loop
+collision_check:    
+    # load some register to specify direction + 4 or +128 for example
+    # addi $t7, $t7, 4  # right collision block
+    # addi $t7, $t7, -128  # top collision block
+    # addi $t7, $t7, 128  # bottom collision block
+    
+    sw $zero, 0($s4)         # clear first block
+    sw $zero, 0($s5)         # clear second block
+    
+    add $t9, $s5, $t7         # the collition detection block for the first pill block
+    lw $t9, 0($t9)            # load the color value of the collision block
+    bne $t9, $zero, return    # early return if anything is there at t9 where block 1 is going
+    
+    add $t9, $s4, $t7         # the collision detection block for the second pill block
+    lw $t9, 0($t9)            # load the color value of the collision block
+    
+    jr $ra
+    
 quit:
 	li $v0, 10                      # Quit gracefully
 	syscall
+    
+return:
+jr $ra
     
     
 
