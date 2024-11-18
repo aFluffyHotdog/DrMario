@@ -90,6 +90,7 @@ main:
     addi $a0, $zero, 12     # Set x coordinate for starting point
     addi $a1, $zero, 4     # Set y coordinate for starting point
     jal init_pill
+    jal init_virus
 
     #################################################################
     ######### Keyboard Section
@@ -166,6 +167,42 @@ j vertical_line_start   # jump back to start of loop
 vertical_line_end:
 jr $ra
 
+init_virus:
+li $v0 , 42             # randomize X value
+li $a0 , 0              # generate random number between 0 and 3
+li $a1 , 14
+syscall                 # store in $a0
+addi $a0, $a0, 5        # Add the X offset, for where the bottle starts
+sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+
+
+li $v0 , 42             # randomize Y value
+li $a0 , 0              # generate random number between 0 and 3
+li $a1 , 16             # Add the Y offset, so that the pill only spawns in 3/4 of the bottle
+syscall                 # store in $a0
+addi $a1, $a0, 10       # Add the Y offset, for where the bottle starts
+sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+
+
+li $v0 , 42             # randomize virus color
+li $a0 , 0              
+li $a1 , 3             
+syscall                 # store in $a0
+beq $a0, 0, virus_yellow     # draw yellow if a0 = 0
+beq $a0, 1, virus_red        # draw red if a0 = 1
+beq $a0, 2, virus_blue          # draw blue if a0 = 2
+virus_yellow:
+sw $t3, 0($t2)
+jr $ra
+virus_red:
+sw $t4, 0($t2)
+jr $ra
+virus_blue:
+sw $t5, 0($t2)
+jr $ra
+
 ### Draws the pill at the spawn location and saves the properties of the 2 blocks
 # block 1 color is in $s2
 # block 2 color is in $s3
@@ -188,11 +225,10 @@ li $t5, 0x0000ff        # temporary blue
 
 
 # TODO: Mayyyybe fix how the condition is written here
-li $v0 , 1 
-li $a1 , 2
-beq $a0, $zero, draw_yellow     # draw yellow if a0 = 0
-beq $a0, $v0, draw_red          # draw red if a0 = 1
-beq $a0, $a1 draw_blue          # draw blue if a0 = 2
+
+beq $a0, 0, draw_yellow     # draw yellow if a0 = 0
+beq $a0, 1, draw_red          # draw red if a0 = 1
+beq $a0, 2, draw_blue          # draw blue if a0 = 2
 jr $ra
 
 draw_yellow:
@@ -216,9 +252,9 @@ li $a0 , 0             # generate random number between 0 and 3
 li $a1 , 3
 syscall                 # store in $a0
 
-beq $a0, $zero, draw_yellow2     # draw yellow if a0 = 0
-beq $a0, $v0, draw_red2          # draw red if a0 = 1
-beq $a0, $a1 draw_blue2          # draw blue if a0 = 2
+beq $a0, 0, draw_yellow2     # draw yellow if a0 = 0
+beq $a0, 1, draw_red2          # draw red if a0 = 1
+beq $a0, 2, draw_blue2          # draw blue if a0 = 2
 draw_yellow2:
 sw $t3, 0($t2)
 li $s3, 0xffff00        #store color into $s3
@@ -381,6 +417,8 @@ quit:
     
 return:
 jr $ra
+
+
     
     
 
