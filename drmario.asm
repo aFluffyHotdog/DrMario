@@ -208,7 +208,8 @@ jr $ra
 # block 2's memory address is in $s5
 init_pill:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s1, s2, s3, s4
 addi $a0, $zero, 12     # Set x coordinate for starting point
-addi $a1, $zero, 4     # Set y coordinate for starting point
+addi $a1, $zero, 4      # Set y coordinate for starting point
+addi $s6, $zero, 0      # Set the rotation state back to zero
     
 sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
@@ -382,7 +383,6 @@ rotate_4:
     addi $s4, $s4, -132       # rotate from right to top
     addi $s6, $zero, 0          # increment rotation state
     jr $ra
-
 drop:
     addi $t6, $ra, 0         # store the return address of this function
     addi $t7, $zero, 128      # bottom collision to be used in collision funciton
