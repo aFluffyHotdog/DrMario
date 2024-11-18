@@ -87,8 +87,6 @@ main:
     addi $a2, $zero, 6     # Set length of line
     jal draw_horizontal_line
     
-    addi $a0, $zero, 12     # Set x coordinate for starting point
-    addi $a1, $zero, 4     # Set y coordinate for starting point
     jal init_pill
     jal init_virus
 
@@ -209,6 +207,9 @@ jr $ra
 # block 1's memory address is in $s4
 # block 2's memory address is in $s5
 init_pill:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s1, s2, s3, s4
+addi $a0, $zero, 12     # Set x coordinate for starting point
+addi $a1, $zero, 4     # Set y coordinate for starting point
+    
 sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
 add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
@@ -291,6 +292,8 @@ keyboard_input:                     # A key is pressed
     beq $a0, 0x64, move_right    # Check if the key D was pressed
     # Quit
     beq $a0, 0x71, quit     # Check if the key Q was pressed
+    # Spawn New Pill
+    beq $a0, 0x70, init_pill
 
     j game_loop
     
