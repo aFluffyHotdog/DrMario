@@ -293,8 +293,6 @@ keyboard_input:                     # A key is pressed
     beq $a0, 0x64, move_right    # Check if the key D was pressed
     # Quit
     beq $a0, 0x71, quit     # Check if the key Q was pressed
-    # Spawn New Pill
-    beq $a0, 0x70, init_pill
 
     j game_loop
     
@@ -383,19 +381,36 @@ rotate_4:
     addi $s4, $s4, -132       # rotate from right to top
     addi $s6, $zero, 0          # increment rotation state
     jr $ra
-drop:
-    addi $t6, $ra, 0         # store the return address of this function
-    addi $t7, $zero, 128      # bottom collision to be used in collision funciton
-    jal collision_check
-    addi $ra, $t6, 0         # load the return address of this function
-    bne $t9, $zero, return   # early return by not rotating position if there is a collision
     
-    sw $zero, 0($s4)         # clear first block
-    sw $zero, 0($s5)         # clear second block
-    addi $s4, $s4, 128      # Shift the y-coordinate of the first pill block by 1 unit below
-    addi $s5, $s5, 128      # Shift the y-coordinate of the second pill block by 1 unit below
+drop:
+    addi $t7, $zero, 128      # bottom collision to be used in collision funciton
+    sw $zero, 0($s4)         # clear first block temporarily
+    sw $zero, 0($s5)         # clear second block temporarily
+    
+    addi $t6, $ra, 0          # store the return address of this function
+        ### Check if it collides with anything at the bottom
+        jal collision_check       # updates $t9 to non zero if it collides from the current location
+        beq $t9, $zero, shift_below
+        
+        ### Check if it collides with anything at the bottom
+        jal draw_pill                   # redraw the pill
+        # initialise a new pill if it collides with anything below it
+        bne $t9, $zero, init_new_pill   # initialize a new pill 
+    
+    addi $ra, $t6, 0            # load the return address of this function
+
+    shift_below:
+        addi $ra, $t6, 0        # load the return address of this function
+        addi $s4, $s4, 128      # Shift the y-coordinate of the first pill block by 1 unit below
+        addi $s5, $s5, 128      # Shift the y-coordinate of the second pill block by 1 unit below
     jr $ra
     
+init_new_pill:
+    addi $s4, $zero, 0          # Shift the y-coordinate of the first pill block by 1 unit below
+    addi $s5, $zero, 0          # Shift the y-coordinate of the second pill block by 1 unit below
+    jal init_pill               # initialize a new pill
+    j game_loop
+
 collision_check:    
     # load some register to specify direction + 4 or +128 for example
     # addi $t7, $t7, 4  # right collision block
@@ -420,8 +435,6 @@ quit:
     
 return:
 jr $ra
-
-
     
     
 
