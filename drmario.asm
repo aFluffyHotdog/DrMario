@@ -25,6 +25,9 @@ ADDR_DSPL:
 # The address of the keyboard. Don't forget to connect it!
 ADDR_KBRD:
     .word 0xffff0000
+    
+MUSIC:
+    .space 28
 
 ##############################################################################
 # Mutable Data
@@ -44,6 +47,7 @@ main:
     # Initialize the game
     lw $s0, ADDR_DSPL       # Store display address into $t0
     li $t1, 0xaaaaaa        # Set color of line (grey)
+    
     # Left border
     addi $a0, $zero, 4      # Set X coordinate for starting point
     addi $a1, $zero, 4      # Set Y coordinate for starting point
@@ -486,7 +490,7 @@ check_right:
         j check_right                  # keep going down
 
 check_transition:
-    bge $t5, 4, check_if_four         # if counter >= 4,
+    bge $t5, 4, clear_horizontal_prep         # if counter >= 4,
     lw $t4, 0($sp)              # we reset the read head, restoring $t4
     addi $t5, $zero, 0          # reset the counter
 
@@ -503,24 +507,24 @@ addi $t4, $t4, +128         # traverse down, since we already checked where we s
 
 check_down:
 lw $t6, 0($t4)              # load color at current point into $t6
-bne $t3, $t6, check_if_four   # while color is still the same as pill it was called on
+bne $t3, $t6, check_if_four_vertical   # while color is still the same as pill it was called on
 addi $t5, $t5, 1            # counter +1 
 addi $t4, $t4, +128         # traverse down
 j check_down                  # keep going down
 
-check_if_four:
+check_if_four_horizontal:
 lw $t4, 0($sp)              # we reset the read head, restoring $t4
-bge $t5, 4, clear_prep         # if counter >= 4,
+bge $t5, 4, clear_horizontal_prep         # if counter >= 4,
+j check_transition
+
+check_if_four_vertical:
+bge $t5, 4, clear_vertical_prep         # if counter >= 4,
 j temp_exit
 
-gtefour:                    # for now if there's a 4 in a row, quit.
-# li $v0, 10                  # terminate the program gracefully
-# syscall   
-j clear_prep
 
 
 
-clear_prep:
+clear_horizontal_prep:
 lw $t4, 0($sp)              # we reset the read head, restoring $t4
 lw $t6, 0($t4)                  # load color at current point into $t6
 clear_left:
@@ -533,6 +537,7 @@ clear_left:
         move_things_down:
         lw $t7, -128($t5)                       # use $t7 to store color above
         beq $t7, $zero, continue_clear_left     # while above is not black
+        # TODO: check if it's a virus
         sw $t7, 0($t5)                          # write above pixel onto where t5 is
         sw $zero, -128($t5)                     # paint the above area zero.
         addi $t5, $t5, -128                     # traverse up
@@ -558,6 +563,7 @@ clear_right:
         move_things_down2:
         lw $t7, -128($t5)                       # use $t7 to store color above
         beq $t7, $zero, continue_clear_right     # while above is not black
+        # TODO: check if it's a virus
         sw $t7, 0($t5)                          # write above pixel onto where t5 is
         sw $zero, -128($t5)                     # paint the above area zero
         addi $t5, $t5, -128                     # traverse up
@@ -568,11 +574,56 @@ continue_clear_right:
     addi $t4, $t4, 4               # traverse right
     j clear_right                  # keep going right
     
+
+
+clear_vertical_prep:
+lw $t4, 0($sp)                  # we reset the read head, restoring $t4
+lw $t6, 0($t4)                  # load color at current point into $t6
+addi $t5, $zero, 0              # initialize t5 as a counter of how much we've cleared
+
+clear_up:
+lw $t3, 0($t4)                  # load color at t4 current point to t3
+bne $t3, $t6, restore_clear2    # while color t3 is same as t6 else go to restore clear 2
+sw $zero, 0($t4)                # paint the screen at t4 black
+addi $t5, $t5, 1                # increment t5 by 1
+addi $t4, $t4, -128             # increment t4 by -128 to move further up
+j clear_up                      # loop
+
+restore_clear2:
+lw $t4, 0($sp)                # we reset the clear head, restoring $t4
+addi $t4, $t4, 128            # shift head by 1 unit down, since we already cleared the place we started
+
+clear_down:
+lw $t3, 0($t4)                  # load color at t4 current point to t3
+bne $t3, $t6, move_things_down3_prep # while color t3 is same as t6 else go to move things down 3
+sw $zero, 0($t4)                # paint the screen at t4 black
+addi $t5, $t5, 1                # increment t5 by 1
+addi $t4, $t4, 128              # increment t4 by 128 to travel down
+j clear_down
+move_things_down3_prep:
+addi $t4, $t4, -128     # $t4  -128 to get back up by one since last loop it would've overshot
+sll $t5, $t5, 7         # shift t5 by 7 digits to get to actual offset of how many pixels above we've cleared
+sub $t5, $t4, $t5       # let t5 point to where the vertically closest color block is  MIGHT BE WRONG
+addi $t5, $t5, -128     # since t5 now points to the topmost block we cleared, we gotta go one above to start moving things down
+
+move_things_down3:
+lw $t7, 0($t5)                       # use $t7 to store t5's color
+beq $t7, $zero, continue_clear_right     # while above is not black
+# TODO: check if it's a virus
+sw $t7, 0($t4)                       # paint current block with color of nearest above block
+addi $t5, $t5, -128     # traverse our color reference by 1
+addi $t4, $t4, -128     # traverse our drawing point by 1
+
+
+# move_things_down2:
+        # lw $t7, -128($t5)                       # use $t7 to store color above
+        # beq $t7, $zero, continue_clear_right     # while above is not black
+        # sw $t7, 0($t5)                          # write above pixel onto where t5 is
+        # sw $zero, -128($t5)                     # paint the above area zero
+        # addi $t5, $t5, -128                     # traverse up
+        # j move_things_down2
+
+
 temp_exit:
 addi $sp, $sp, 4           # restore stack pointer once we're done checking everrrrry thing 
 jr $ra
-
-
-
-
-
