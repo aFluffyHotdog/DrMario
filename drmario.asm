@@ -89,6 +89,8 @@ main:
     
     jal init_pill
     jal init_virus
+    jal init_virus
+    jal init_virus
 
     #################################################################
     ######### Keyboard Section
@@ -115,6 +117,7 @@ game_loop:
         
     
 	# 2b. Update locations (capsules)
+	
 	# 3. Draw the screen
 	j draw_pill
 	
@@ -123,7 +126,7 @@ game_loop:
 	li $a0, 166
 	syscall
 	
-
+	
     # 5. Go back to Step 1
     j game_loop
 
@@ -182,6 +185,11 @@ syscall                 # store in $a0
 addi $a1, $a0, 10       # Add the Y offset, for where the bottle starts
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
 add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+
+#### We're going to initiate virus colors a litttttttle bit differently #######3
+li $t3, 0xffff01        # temporary yellow
+li $t4, 0xff0001        # temporary red
+li $t5, 0x0000f1        # temporary blue
 
 
 li $v0 , 42             # randomize virus color
@@ -406,6 +414,12 @@ drop:
     jr $ra
     
 init_new_pill:
+    addi $sp, $sp, -4           # save $ra onto stack          
+    sw $ra, 0($sp)
+	jal check_clear_block1
+	jal check_clear_block2
+	lw $ra, 0($sp)              # restore $ra
+    addi $sp, $sp, 4 
     addi $s4, $zero, 0          # Shift the y-coordinate of the first pill block by 1 unit below
     addi $s5, $zero, 0          # Shift the y-coordinate of the second pill block by 1 unit below
     jal init_pill               # initialize a new pill
@@ -435,8 +449,128 @@ quit:
     
 return:
 jr $ra
+
+###### Big block for the check and clear stuff ######
+check_clear_block1: 
+    add $t3, $zero, $s2     #load block 1 color
+    add $t4, $zero, $s4     #load block 1 pos, we'll use this as our read head
+    addi $sp, $sp, -4           # initialize reading pointer     
+    sw $t4, 0($sp)              # store original position into stack
+    addi $t5, $zero, 0            # initialize our counter
+    j check_left
+
+check_clear_block2: 
+    add $t3, $zero, $s3     #load block 1 color
+    add $t4, $zero, $s5     #load block 1 pos, we'll use this as our read head
+    addi $sp, $sp, -4           # initialize reading pointer     
+    sw $t4, 0($sp)              # store original position into stack
+    addi $t5, $zero, 0            # initialize our counter
+    j check_left
+      
+check_left:
+    lw $t6, 0($t4)                  # load color at current point into $t6
+    bne $t3, $t6, restore_checker1    # while color is still the same as pill it was called on
+        addi $t5, $t5, 1                # counter +1 
+        addi $t4, $t4, -4               # traverse left
+        j check_left                    # keep going left
+
+restore_checker1:
+    lw $t4, 0($sp)              # we reset the read head, restoring $t4
+    addi $t4, $t4, +4         # traverse right first
+
+check_right:
+    lw $t6, 0($t4)              # load color at current point into $t6
+    bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
+        addi $t5, $t5, 1            # counter +1 
+        addi $t4, $t4, +4         # traverse down
+        j check_right                  # keep going down
+
+check_transition:
+    bge $t5, 4, check_if_four         # if counter >= 4,
+    lw $t4, 0($sp)              # we reset the read head, restoring $t4
+    addi $t5, $zero, 0          # reset the counter
+
+check_up:
+    lw $t6, 0($t4)              # load color at current point into $t6
+    bne $t3, $t6, restore_check_head2    # while color is still the same as pill it was called on
+        addi $t5, $t5, 1            # counter +1 
+        addi $t4, $t4, -128         # traverse up
+        j check_up                  # keep going up
     
+restore_check_head2:
+lw $t4, 0($sp)              # we reset the read head, restoring $t4
+addi $t4, $t4, +128         # traverse down, since we already checked where we started
+
+check_down:
+lw $t6, 0($t4)              # load color at current point into $t6
+bne $t3, $t6, check_if_four   # while color is still the same as pill it was called on
+addi $t5, $t5, 1            # counter +1 
+addi $t4, $t4, +128         # traverse down
+j check_down                  # keep going down
+
+check_if_four:
+lw $t4, 0($sp)              # we reset the read head, restoring $t4
+bge $t5, 4, clear_prep         # if counter >= 4,
+j temp_exit
+
+gtefour:                    # for now if there's a 4 in a row, quit.
+# li $v0, 10                  # terminate the program gracefully
+# syscall   
+j clear_prep
+
+
+
+clear_prep:
+lw $t4, 0($sp)              # we reset the read head, restoring $t4
+lw $t6, 0($t4)                  # load color at current point into $t6
+clear_left:
+    lw $t3, 0($t4)                  # load color at current point into $t3
+    bne $t3, $t6, restore_clear1    # while color is still the same as pill it was called on
+    sw $zero, 0($t4)                # paint the screen at $t4 black
+    ### start the move things above down loop ###
+    addi $t5, $t4, 0                        # use $t5 as a pointer for where we are
+    # jal move_things_down
+        move_things_down:
+        lw $t7, -128($t5)                       # use $t7 to store color above
+        beq $t7, $zero, continue_clear_left     # while above is not black
+        sw $t7, 0($t5)                          # write above pixel onto where t5 is
+        sw $zero, -128($t5)                     # paint the above area zero.
+        addi $t5, $t5, -128                     # traverse up
+        j move_things_down
+        
+        
+continue_clear_left:
+    addi $t4, $t4, -4               # traverse left
+    j clear_left                    # keep going left
     
+restore_clear1:
+lw $t4, 0($sp)              # we reset the read head, restoring $t4
+addi $t4, $t4, 4            # shift head by 1 unit to the right, since we already checked the place we started
+#TODO: reset the header
+
+clear_right:
+    lw $t3, 0($t4)                  # load color at current point into $t6
+    bne $t3, $t6, temp_exit    # while color is still the same as pill it was called on
+    sw $zero, 0($t4)                # paint the screen at $t4 black
+    ### start the move things above down loop ###
+    addi $t5, $t4, 0                        # use $t5 as a pointer for where we are
+    # jal move_things_down
+        move_things_down2:
+        lw $t7, -128($t5)                       # use $t7 to store color above
+        beq $t7, $zero, continue_clear_right     # while above is not black
+        sw $t7, 0($t5)                          # write above pixel onto where t5 is
+        sw $zero, -128($t5)                     # paint the above area zero
+        addi $t5, $t5, -128                     # traverse up
+        j move_things_down2
+        
+        
+continue_clear_right:
+    addi $t4, $t4, 4               # traverse right
+    j clear_right                  # keep going right
+    
+temp_exit:
+addi $sp, $sp, 4           # restore stack pointer once we're done checking everrrrry thing 
+jr $ra
 
 
 
