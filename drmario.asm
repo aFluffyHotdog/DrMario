@@ -105,6 +105,10 @@ main:
     
 
 game_loop:
+
+    li $v0, 32
+	li $a0, 16
+	syscall
     
     # 1a. Check if key has been pressed
     # 1b. Check which key has been pressed
@@ -123,12 +127,10 @@ game_loop:
 	# 2b. Update locations (capsules)
 	
 	# 3. Draw the screen
-	j draw_pill
-	
+	jal draw_pill
+	jal initiate_gravity
 	# 4. Sleep (1/60 second = 166.66... milliseconds
-	li $v0, 32
-	li $a0, 166
-	syscall
+	
 	
 	
     # 5. Go back to Step 1
@@ -174,7 +176,7 @@ jr $ra
 
 init_virus:
 li $v0 , 42             # randomize X value
-li $a0 , 0              # generate random number between 0 and 3
+li $a0 , 0 
 li $a1 , 14
 syscall                 # store in $a0
 addi $a0, $a0, 5        # Add the X offset, for where the bottle starts
@@ -190,7 +192,7 @@ addi $a1, $a0, 10       # Add the Y offset, for where the bottle starts
 sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
 add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
 
-#### We're going to initiate virus colors a litttttttle bit differently #######3
+#### We're going to initiate virus colors a litttttttle bit differently #######1
 li $t3, 0xffff01        # temporary yellow
 li $t4, 0xff0001        # temporary red
 li $t5, 0x0000f1        # temporary blue
@@ -595,24 +597,24 @@ addi $t4, $t4, 128            # shift head by 1 unit down, since we already clea
 
 clear_down:
 lw $t3, 0($t4)                  # load color at t4 current point to t3
-bne $t3, $t6, move_things_down3_prep # while color t3 is same as t6 else go to move things down 3
+bne $t3, $t6, temp_exit # while color t3 is same as t6 else go to move things down 3
 sw $zero, 0($t4)                # paint the screen at t4 black
 addi $t5, $t5, 1                # increment t5 by 1
 addi $t4, $t4, 128              # increment t4 by 128 to travel down
 j clear_down
-move_things_down3_prep:
-addi $t4, $t4, -128     # $t4  -128 to get back up by one since last loop it would've overshot
-sll $t5, $t5, 7         # shift t5 by 7 digits to get to actual offset of how many pixels above we've cleared
-sub $t5, $t4, $t5       # let t5 point to where the vertically closest color block is  MIGHT BE WRONG
-addi $t5, $t5, -128     # since t5 now points to the topmost block we cleared, we gotta go one above to start moving things down
+# move_things_down3_prep:
+# addi $t4, $t4, -128     # $t4  -128 to get back up by one since last loop it would've overshot
+# sll $t5, $t5, 7         # shift t5 by 7 digits to get to actual offset of how many pixels above we've cleared
+# sub $t5, $t4, $t5       # let t5 point to where the vertically closest color block is  MIGHT BE WRONG
+# addi $t5, $t5, -128     # since t5 now points to the topmost block we cleared, we gotta go one above to start moving things down
 
-move_things_down3:
-lw $t7, 0($t5)                       # use $t7 to store t5's color
-beq $t7, $zero, continue_clear_right     # while above is not black
-# TODO: check if it's a virus
-sw $t7, 0($t4)                       # paint current block with color of nearest above block
-addi $t5, $t5, -128     # traverse our color reference by 1
-addi $t4, $t4, -128     # traverse our drawing point by 1
+# move_things_down3:
+# lw $t7, 0($t5)                       # use $t7 to store t5's color
+# beq $t7, $zero, continue_clear_right     # while above is not black
+# # TODO: check if it's a virus
+# sw $t7, 0($t4)                       # paint current block with color of nearest above block
+# addi $t5, $t5, -128     # traverse our color reference by 1
+# addi $t4, $t4, -128     # traverse our drawing point by 1
 
 
 # move_things_down2:
@@ -623,7 +625,44 @@ addi $t4, $t4, -128     # traverse our drawing point by 1
         # addi $t5, $t5, -128                     # traverse up
         # j move_things_down2
 
+finish_clearig:
+addi $sp, $sp, 4
+jr $ra
 
 temp_exit:
-addi $sp, $sp, 4           # restore stack pointer once we're done checking everrrrry thing 
+# addi $sp, $sp, 4           # restore stack pointer once we're done checking everrrrry thing 
 jr $ra
+
+
+initiate_gravity:
+addi $t3, $s0, 660 # initiate pointer at top left of bottle x = 5, y =5
+gravity_loop:
+    beq $t3, 0x10008D00 , temp_exit # check if we're beyond bound of bottle o
+    lw $t4, 0($t3)  # load color at current point
+    beq $zero, $t4, gravity_loop_cont  # if curr not black, if curr is black: go to pointer +4
+    # TODO: if curr not virus, else: go to pointer +4
+    beq $t3, $s4, gravity_loop_cont  # don't clear if we're checking the active pill
+    beq $t3, $s5, gravity_loop_cont  # don't clear if we're checking the active pill   
+    lw $t5, 128($t3) # load color below curr
+    bne $t5, $zero, gravity_loop_cont  # increment if down below isn't black
+    lw $t5, -4($t3) # load color to the left into t5
+    beq $t5, 0, gravity_right_check # if the left is black go to check right
+    bne $t5, 0xaaaaaa, gravity_loop_cont # then left should be wall then go to check right, else jump to increment
+    gravity_right_check:
+    lw $t5, 4($t3)  # load color to the right into t5
+    beq $t5, $zero, move_shit_down  # if right is black go to to move shit down, else check if wall
+    bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
+    move_shit_down:
+    sw $zero, 0($t3)    # clear current position
+    sw $t4, 128($t3) # move curr down + 128
+    gravity_loop_cont:
+    addi $t3, $t3, 4 # pointer + 4
+    j gravity_loop
+        
+
+#handling random floating little shits
+# if found a block that is free on left, and bottom 
+# keep going right
+# stop looping when border is reached
+# stop looping when black is reached
+# stop looping when
