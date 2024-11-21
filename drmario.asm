@@ -459,6 +459,7 @@ jr $ra
 ###### Big block for the check and clear stuff ######
 check_clear_block1: 
     add $t3, $zero, $s2     #load block 1 color
+    andi $t3, $t3, 0xfffff0 # mask block1's to make sure that it reads the same as the virus
     add $t4, $zero, $s4     #load block 1 pos, we'll use this as our read head
     addi $sp, $sp, -4           # initialize reading pointer     
     sw $t4, 0($sp)              # store original position into stack
@@ -467,6 +468,7 @@ check_clear_block1:
 
 check_clear_block2: 
     add $t3, $zero, $s3     #load block 1 color
+    andi $t3, $t3, 0xfffff0 # mask block1's to make sure that it reads the same as the virus
     add $t4, $zero, $s5     #load block 1 pos, we'll use this as our read head
     addi $sp, $sp, -4           # initialize reading pointer     
     sw $t4, 0($sp)              # store original position into stack
@@ -475,6 +477,7 @@ check_clear_block2:
       
 check_left:
     lw $t6, 0($t4)                  # load color at current point into $t6
+    andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
     bne $t3, $t6, restore_checker1    # while color is still the same as pill it was called on
         addi $t5, $t5, 1                # counter +1 
         addi $t4, $t4, -4               # traverse left
@@ -486,6 +489,7 @@ restore_checker1:
 
 check_right:
     lw $t6, 0($t4)              # load color at current point into $t6
+    andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
     bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
         addi $t5, $t5, 1            # counter +1 
         addi $t4, $t4, +4         # traverse down
@@ -498,21 +502,23 @@ check_transition:
 
 check_up:
     lw $t6, 0($t4)              # load color at current point into $t6
+    andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
     bne $t3, $t6, restore_check_head2    # while color is still the same as pill it was called on
         addi $t5, $t5, 1            # counter +1 
         addi $t4, $t4, -128         # traverse up
         j check_up                  # keep going up
     
 restore_check_head2:
-lw $t4, 0($sp)              # we reset the read head, restoring $t4
-addi $t4, $t4, +128         # traverse down, since we already checked where we started
+    lw $t4, 0($sp)              # we reset the read head, restoring $t4
+    addi $t4, $t4, +128         # traverse down, since we already checked where we started
 
 check_down:
-lw $t6, 0($t4)              # load color at current point into $t6
-bne $t3, $t6, check_if_four_vertical   # while color is still the same as pill it was called on
-addi $t5, $t5, 1            # counter +1 
-addi $t4, $t4, +128         # traverse down
-j check_down                  # keep going down
+    lw $t6, 0($t4)              # load color at current point into $t6
+    andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    bne $t3, $t6, check_if_four_vertical   # while color is still the same as pill it was called on
+    addi $t5, $t5, 1            # counter +1 
+    addi $t4, $t4, +128         # traverse down
+    j check_down                  # keep going down
 
 check_if_four_horizontal:
 lw $t4, 0($sp)              # we reset the read head, restoring $t4
@@ -581,10 +587,12 @@ continue_clear_right:
 clear_vertical_prep:
 lw $t4, 0($sp)                  # we reset the read head, restoring $t4
 lw $t6, 0($t4)                  # load color at current point into $t6
+andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
 addi $t5, $zero, 0              # initialize t5 as a counter of how much we've cleared
 
 clear_up:
 lw $t3, 0($t4)                  # load color at t4 current point to t3
+andi $t3, $t3, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
 bne $t3, $t6, restore_clear2    # while color t3 is same as t6 else go to restore clear 2
 sw $zero, 0($t4)                # paint the screen at t4 black
 addi $t5, $t5, 1                # increment t5 by 1
@@ -597,33 +605,12 @@ addi $t4, $t4, 128            # shift head by 1 unit down, since we already clea
 
 clear_down:
 lw $t3, 0($t4)                  # load color at t4 current point to t3
+andi $t3, $t3, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
 bne $t3, $t6, temp_exit # while color t3 is same as t6 else go to move things down 3
 sw $zero, 0($t4)                # paint the screen at t4 black
 addi $t5, $t5, 1                # increment t5 by 1
 addi $t4, $t4, 128              # increment t4 by 128 to travel down
 j clear_down
-# move_things_down3_prep:
-# addi $t4, $t4, -128     # $t4  -128 to get back up by one since last loop it would've overshot
-# sll $t5, $t5, 7         # shift t5 by 7 digits to get to actual offset of how many pixels above we've cleared
-# sub $t5, $t4, $t5       # let t5 point to where the vertically closest color block is  MIGHT BE WRONG
-# addi $t5, $t5, -128     # since t5 now points to the topmost block we cleared, we gotta go one above to start moving things down
-
-# move_things_down3:
-# lw $t7, 0($t5)                       # use $t7 to store t5's color
-# beq $t7, $zero, continue_clear_right     # while above is not black
-# # TODO: check if it's a virus
-# sw $t7, 0($t4)                       # paint current block with color of nearest above block
-# addi $t5, $t5, -128     # traverse our color reference by 1
-# addi $t4, $t4, -128     # traverse our drawing point by 1
-
-
-# move_things_down2:
-        # lw $t7, -128($t5)                       # use $t7 to store color above
-        # beq $t7, $zero, continue_clear_right     # while above is not black
-        # sw $t7, 0($t5)                          # write above pixel onto where t5 is
-        # sw $zero, -128($t5)                     # paint the above area zero
-        # addi $t5, $t5, -128                     # traverse up
-        # j move_things_down2
 
 finish_clearig:
 addi $sp, $sp, 4
@@ -641,6 +628,8 @@ gravity_loop:
     lw $t4, 0($t3)  # load color at current point
     beq $zero, $t4, gravity_loop_cont  # if curr not black, if curr is black: go to pointer +4
     # TODO: if curr not virus, else: go to pointer +4
+    andi $t7, $t4, 0x0F     # check if current pixel is a virus (the last hex digit is a 1)
+    beq $t7, 1, gravity_loop_cont
     beq $t3, $s4, gravity_loop_cont  # don't clear if we're checking the active pill
     beq $t3, $s5, gravity_loop_cont  # don't clear if we're checking the active pill   
     lw $t5, 128($t3) # load color below curr
