@@ -639,11 +639,29 @@ gravity_loop:
     bne $t5, 0xaaaaaa, gravity_loop_cont # then left should be wall then go to check right, else jump to increment
     gravity_right_check:
     lw $t5, 4($t3)  # load color to the right into t5
-    beq $t5, $zero, move_shit_down  # if right is black go to to move shit down, else check if wall
+    beq $t5, $zero, move_shit_down_prep  # if right is black go to to move shit down, else check if wall
     bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
-    move_shit_down:
+        move_shit_down_prep:
+        addi $t4, $t3, 0    # load $t3 into $t4 since we're going to be messing with it.
+        move_shit_down:
+        lw $t5, 128($t4)    # load a block below into t5
+        bne $zero, $t5, gravity_loop_cont # while block below is black
+        lw $t5, 0($t4)      # store color at current point into $t5
+        sw $t5, 128($t4)    # write current pos to 128 below
+        sw $zero, 0($t4)    # erase current pos
+        addi $t4, $t4, 128  # increment t4
+        j move_shit_down
+    
+    
+    
+    
+    ### old implementation ###
+    
     sw $zero, 0($t3)    # clear current position
     sw $t4, 128($t3) # move curr down + 128
+    
+    
+    
     gravity_loop_cont:
     addi $t3, $t3, 4 # pointer + 4
     j gravity_loop
