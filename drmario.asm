@@ -15,6 +15,14 @@
 # - Base Address for Display:   0x10008000 ($gp)
 ##############################################################################
 
+
+#######  TODO  #######
+# - Game over
+# - Pause Screen
+# - 
+
+
+
     .data
 ##############################################################################
 # Immutable Data
@@ -230,6 +238,9 @@ sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to 
 add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
 add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
 add $s4, $t2, $zero     # store block 1's position into $s4
+lw $t9, 0($s4)
+bne $t9, $zero, quit
+    
 li $v0 , 42             # let the system know we're randomizing
 li $a0 , 0             # generate random number between 0 and 3
 li $a1 , 3
@@ -271,6 +282,7 @@ syscall                 # store in $a0
 beq $a0, 0, draw_yellow2     # draw yellow if a0 = 0
 beq $a0, 1, draw_red2          # draw red if a0 = 1
 beq $a0, 2, draw_blue2          # draw blue if a0 = 2
+
 draw_yellow2:
 sw $t3, 0($t2)
 li $s3, 0xffff00        #store color into $s3
@@ -420,7 +432,9 @@ drop:
     jr $ra
     
 init_new_pill:
-    addi $sp, $sp, -4           # save $ra onto stack          
+    
+    addi $sp, $sp, -4           # save $ra onto stack    
+    
     sw $ra, 0($sp)
 	jal check_clear_block1
 	jal check_clear_block2
@@ -429,6 +443,7 @@ init_new_pill:
     addi $s4, $zero, 0          # Shift the y-coordinate of the first pill block by 1 unit below
     addi $s5, $zero, 0          # Shift the y-coordinate of the second pill block by 1 unit below
     jal init_pill               # initialize a new pill
+    
     j game_loop
 
 collision_check:    
@@ -639,29 +654,11 @@ gravity_loop:
     bne $t5, 0xaaaaaa, gravity_loop_cont # then left should be wall then go to check right, else jump to increment
     gravity_right_check:
     lw $t5, 4($t3)  # load color to the right into t5
-    beq $t5, $zero, move_shit_down_prep  # if right is black go to to move shit down, else check if wall
+    beq $t5, $zero, move_shit_down  # if right is black go to to move shit down, else check if wall
     bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
-        move_shit_down_prep:
-        addi $t4, $t3, 0    # load $t3 into $t4 since we're going to be messing with it.
-        move_shit_down:
-        lw $t5, 128($t4)    # load a block below into t5
-        bne $zero, $t5, gravity_loop_cont # while block below is black
-        lw $t5, 0($t4)      # store color at current point into $t5
-        sw $t5, 128($t4)    # write current pos to 128 below
-        sw $zero, 0($t4)    # erase current pos
-        addi $t4, $t4, 128  # increment t4
-        j move_shit_down
-    
-    
-    
-    
-    ### old implementation ###
-    
+    move_shit_down:
     sw $zero, 0($t3)    # clear current position
     sw $t4, 128($t3) # move curr down + 128
-    
-    
-    
     gravity_loop_cont:
     addi $t3, $t3, 4 # pointer + 4
     j gravity_loop
