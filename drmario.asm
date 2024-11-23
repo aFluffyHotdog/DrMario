@@ -35,14 +35,14 @@ ADDR_KBRD:
     .word 0xffff0000
     
 THEME_SONG:
-    .space 184 
+    .space 188
 
 DIFFICULTY:
-    .word 0x00000001   # 1 = easy, 2 = medium, 3 = hard
+    .word 1   # 1 = easy, 2 = medium, 3 = hard
 FRAME_COUNTER:
     .word 0    # used to store how many frames we've gone by (for gravity)
 DROP_SPEED:
-    .word 45
+    .word 45  # 60 for easy, 45 for medium, 30 for hard
 
 ##############################################################################
 # Mutable Data
@@ -108,19 +108,52 @@ main:
     
     jal load_theme
     jal init_pill
+    
+    lw $t0, DIFFICULTY
+    easy_setup:
+    bne $t0, 1, medium_setup
     jal init_virus
     jal init_virus
+    jal init_virus  
+    lw $t0, DROP_SPEED
+    addi $t0, $zero, 60         # drop every 60 frames for easy
+    sw $t0, DROP_SPEED
+    j counter_setup
+    medium_setup:   
+    bne $t0, 2, hard_setup
+    # 7 viruses for medium
+    fall_back_setup:
     jal init_virus
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
 
-    #################################################################
-    ######### Keyboard Section
-    #################################################################
+    j counter_setup
+    hard_setup:
+    bne $t0, 3, fall_back_setup    # fallback to medium if user inputs an invalid number
+    jal init_virus
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus  
+    jal init_virus
+    lw $t0, DROP_SPEED
+    addi $t0, $zero, 30         # drop every 30 frames for hard
+    sw $t0, DROP_SPEED
+    counter_setup:
     addi $t9, $zero, 0  # initiate frame counter
     addi $t8, $zero, 0  # initiate music counter
     j game_loop
-    
-    
-
+      
 game_loop:
     
     li $v0, 32
@@ -675,11 +708,18 @@ gravity_loop:
     bne $t5, 0xaaaaaa, gravity_loop_cont # then left should be wall then go to check right, else jump to increment
     gravity_right_check:
     lw $t5, 4($t3)  # load color to the right into t5
-    beq $t5, $zero, move_shit_down  # if right is black go to to move shit down, else check if wall
+    beq $t5, $zero, move_shit_down_prep  # if right is black go to to move shit down, else check if wall
     bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
-    move_shit_down:
-    sw $zero, 0($t3)    # clear current position
-    sw $t4, 128($t3) # move curr down + 128
+        move_shit_down_prep:
+        addi $t4, $t3, 0    # load $t3 into $t4 since we're going to be messing with it.
+        move_shit_down:
+        lw $t5, 128($t4)    # load a block below into t5
+        bne $zero, $t5, gravity_loop_cont # while block below is black
+        lw $t5, 0($t4)      # store color at current point into $t5
+        sw $t5, 128($t4)    # write current pos to 128 below
+        sw $zero, 0($t4)    # erase current pos
+        addi $t4, $t4, 128  # increment t4
+        j move_shit_down
     gravity_loop_cont:
     addi $t3, $t3, 4 # pointer + 4
     j gravity_loop
