@@ -34,8 +34,8 @@ ADDR_DSPL:
 ADDR_KBRD:
     .word 0xffff0000
     
-MUSIC:
-    .space 28
+THEME_SONG:
+.space 184 
 
 ##############################################################################
 # Mutable Data
@@ -99,6 +99,7 @@ main:
     addi $a2, $zero, 6     # Set length of line
     jal draw_horizontal_line
     
+    jal load_theme
     jal init_pill
     jal init_virus
     jal init_virus
@@ -107,16 +108,23 @@ main:
     #################################################################
     ######### Keyboard Section
     #################################################################
-    
+    addi $t9, $zero, 0  # initiate frame counter
+    addi $t8, $zero, 0  # initiate music counter
     j game_loop
     
     
 
 game_loop:
-
+    beq $t9, 13, play_music_prep
     li $v0, 32
 	li $a0, 16
 	syscall
+	
+	game_loop_cont:
+    addi $sp, $sp, -4           # save $t9 onto stack    
+    sw $t9, 0($sp)
+    addi $sp, $sp, -4           # save $t9 onto stack    
+    sw $t8, 0($sp)
     
     # 1a. Check if key has been pressed
     # 1b. Check which key has been pressed
@@ -133,12 +141,17 @@ game_loop:
         
     
 	# 2b. Update locations (capsules)
-	
+	init_newpill_exit:
 	# 3. Draw the screen
 	jal draw_pill
 	jal initiate_gravity
 	# 4. Sleep (1/60 second = 166.66... milliseconds
 	
+	lw $t8, 0($sp) # restore t9 from stack
+	addi $sp, $sp, 4
+	lw $t9, 0($sp) # restore t9 from stack
+	addi $sp, $sp, 4
+	addi $t9, $t9, 1
 	
 	
     # 5. Go back to Step 1
@@ -444,7 +457,7 @@ init_new_pill:
     addi $s5, $zero, 0          # Shift the y-coordinate of the second pill block by 1 unit below
     jal init_pill               # initialize a new pill
     
-    j game_loop
+    j init_newpill_exit
 
 collision_check:    
     # load some register to specify direction + 4 or +128 for example
@@ -538,10 +551,12 @@ check_down:
 check_if_four_horizontal:
 lw $t4, 0($sp)              # we reset the read head, restoring $t4
 bge $t5, 4, clear_horizontal_prep         # if counter >= 4,
+addi $sp, $sp, 4            # move stack pointer back up!!!! 
 j check_transition
 
 check_if_four_vertical:
 bge $t5, 4, clear_vertical_prep         # if counter >= 4,
+addi $sp, $sp, 4            # move stack pointer back up!!!! 
 j temp_exit
 
 
@@ -621,13 +636,13 @@ addi $t4, $t4, 128            # shift head by 1 unit down, since we already clea
 clear_down:
 lw $t3, 0($t4)                  # load color at t4 current point to t3
 andi $t3, $t3, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
-bne $t3, $t6, temp_exit # while color t3 is same as t6 else go to move things down 3
+bne $t3, $t6, finish_clearing # while color t3 is same as t6 else go to move things down 3
 sw $zero, 0($t4)                # paint the screen at t4 black
 addi $t5, $t5, 1                # increment t5 by 1
 addi $t4, $t4, 128              # increment t4 by 128 to travel down
 j clear_down
 
-finish_clearig:
+finish_clearing:
 addi $sp, $sp, 4
 jr $ra
 
@@ -663,10 +678,127 @@ gravity_loop:
     addi $t3, $t3, 4 # pointer + 4
     j gravity_loop
         
+load_theme:  # load all the notes of the theme in order, (might have to store duration too but we'll see)
+la $s7, THEME_SONG
+addi $t1, $zero, 43  # G
+sw $t1, 0($s7)
+addi $t1, $zero, 43  # G
+sw $t1, 4($s7)
+addi $t1, $zero, 46  # Bb
+sw $t1, 8($s7)
+addi $t1, $zero, 47  # B
+sw $t1, 12($s7)
+addi $t1, $zero, 48  # C
+sw $t1, 16($s7)
+addi $t1, $zero, 47  # B
+sw $t1, 20($s7)
+addi $t1, $zero, 46  # Bb
+sw $t1, 24($s7)
+addi $t1, $zero, 45  # A
+sw $t1, 28($s7)
+addi $t1, $zero, 43 # G
+sw $t1, 32($s7)
+addi $t1, $zero, 43 # G
+sw $t1, 36($s7)
+addi $t1, $zero, 46  # Bb
+sw $t1, 40($s7)
+addi $t1, $zero, 47  # B
+sw $t1, 44($s7)
+addi $t1, $zero, 48  # C
+sw $t1, 48($s7)
+addi $t1, $zero, 47  # B
+sw $t1, 52($s7)
+addi $t1, $zero, 46  # Bb
+sw $t1, 56($s7)
+addi $t1, $zero, 45  # A
+sw $t1, 60($s7)
 
-#handling random floating little shits
-# if found a block that is free on left, and bottom 
-# keep going right
-# stop looping when border is reached
-# stop looping when black is reached
-# stop looping when
+
+addi $t1, $zero, 70  # Bb
+sw $t1, 64($s7)
+addi $t1, $zero, 71 # B
+sw $t1, 68($s7)
+addi $t1, $zero, 70 # Bb
+sw $t1, 72($s7)
+addi $t1, $zero, 71 # B
+sw $t1, 76($s7)
+addi $t1, $zero, 69 # A
+sw $t1, 80($s7)
+addi $t1, $zero, 67 # G
+sw $t1, 84($s7)
+addi $t1, $zero, 67 # G
+sw $t1, 88($s7)
+addi $t1, $zero, 69 # A
+sw $t1, 92($s7)
+addi $t1, $zero, 70  # Bb
+sw $t1, 96($s7)
+addi $t1, $zero, 71 # B
+sw $t1, 100($s7)
+addi $t1, $zero, 70 # Bb
+sw $t1, 104($s7)
+addi $t1, $zero, 71 # B
+sw $t1, 108($s7)
+addi $t1, $zero, 69 # A
+sw $t1, 112($s7)
+addi $t1, $zero, 67 # G
+sw $t1, 116($s7)
+addi $t1, $zero, 67 # G
+sw $t1, 120($s7)
+addi $t1, $zero, 69 # A
+sw $t1, 124($s7)
+addi $t1, $zero, 70  # Bb
+sw $t1, 128($s7)
+addi $t1, $zero, 71 # B
+sw $t1, 132($s7)
+addi $t1, $zero, 70 # Bb
+sw $t1, 136($s7)
+addi $t1, $zero, 71 # B
+sw $t1, 140($s7)
+addi $t1, $zero, 69 # A
+sw $t1, 144($s7)
+addi $t1, $zero, 67 # G
+sw $t1, 148($s7)
+addi $t1, $zero, 67 # G
+sw $t1, 152($s7)
+
+addi $t1, $zero, 59 # B
+sw $t1, 156($s7)
+addi $t1, $zero, 59 # B
+sw $t1, 160($s7)
+addi $t1, $zero, 60 # C
+sw $t1, 164($s7)
+addi $t1, $zero, 60 # C
+sw $t1, 168($s7)
+addi $t1, $zero, 61 # C#
+sw $t1, 172($s7)
+addi $t1, $zero, 61 # C#
+sw $t1, 176($s7)
+addi $t1, $zero, 62 # D
+sw $t1, 180($s7)
+addi $t1, $zero, 62 # D
+sw $t1, 184($s7)
+jr $ra
+
+play_music_prep:
+addi $t9, $zero, 0 # reset frame counter to 0
+beq $t8, 46, restart_theme
+
+
+play_music:
+ # if note reader reached the end reset s7 back to the address theme_song
+# reset to 0 
+sll $t3, $t8, 2
+add $t6, $s7, $t3  # add the beat counter
+li $v0 31   # MIDI syscall
+lw $a0, 0($t6)  #load note
+li $a1, 13 # len in ms
+li $a2, 12   # synth instrument
+li $a3, 60  # volume
+addi $t8, $t8, 1
+syscall
+j game_loop_cont
+
+restart_theme:
+addi, $t8, $zero, 0
+addi, $t6, $zero, 0
+j play_music
