@@ -42,7 +42,7 @@ DIFFICULTY:
 FRAME_COUNTER:
     .word 0    # used to store how many frames we've gone by (for gravity)
 DROP_SPEED:
-    .word 60
+    .word 45
 
 ##############################################################################
 # Mutable Data
@@ -129,7 +129,7 @@ game_loop:
 	
 	### counting frames (for timing purposes) ###
 	lw $t0, FRAME_COUNTER                        # load how many frames we've run through
-    beq $t0, 6000, reset_frame_increase_speed    # reset every 6000 frame to prevent  overflowing
+    beq $t0, 600, reset_frame_increase_speed    # reset every 600 frame to prevent overflowing and to increase drop speed
     addi $t0, $t0, 1                             # increment frame counter by 1
     sw $t0, FRAME_COUNTER                        # save frame counter
     div $t9, $t0, 13                             # divide frame counter by 13 to see if we should play new note
@@ -809,8 +809,8 @@ addi, $t6, $zero, 0
 j play_music
 
 reset_frame_increase_speed:
-sw $zero, FRAME_COUNTER     # once we've reached 6000 frames crunched out, we reset the counter to avoid overflowing
+sw $zero, FRAME_COUNTER     # once we've reached the frame counter limit, we reset the counter to avoid overflowing
 lw $t4, DROP_SPEED          # load drop speed
-addi $t4, $t4, 10           # increase it by 10 frames
+subi $t4, $t4, 10           # increase it by 10 frames
 sw $t4, DROP_SPEED          # store drop speed
 j game_loop                  # jump back to game loop
