@@ -811,6 +811,7 @@ j play_music
 reset_frame_increase_speed:
 sw $zero, FRAME_COUNTER     # once we've reached the frame counter limit, we reset the counter to avoid overflowing
 lw $t4, DROP_SPEED          # load drop speed
-subi $t4, $t4, 10           # increase it by 10 frames
+blt $t4, 10, game_loop
+subi $t4, $t4, 5           # increase it by 5 frames
 sw $t4, DROP_SPEED          # store drop speed
 j game_loop                  # jump back to game loop
