@@ -42,7 +42,7 @@ DIFFICULTY:
 FRAME_COUNTER:
     .word 0    # used to store how many frames we've gone by (for gravity)
 DROP_SPEED:
-    .word 45
+    .word 60
 
 ##############################################################################
 # Mutable Data
@@ -135,13 +135,15 @@ game_loop:
     div $t9, $t0, 13                             # divide frame counter by 13 to see if we should play new note
     mfhi $t9                                     # take the remainder
     beq $t9, 0, play_music_prep                  # play new note if remainder is 0
-    lw $t9, DROP_SPEED                           # load drop speed
-    div $t9, $t0, $t9                            # see if enough frames have passed to start dropping the pill
-    mfhi $t9                                     # take the remainder (branching is down below to preserve control flow)
+    
 
 	game_loop_cont:
     addi $sp, $sp, -4           # save $t9 onto stack    
     sw $t8, 0($sp)              # store s8 for the music function
+    lw $t0, FRAME_COUNTER                        # load how many frames we've run through
+    lw $t9, DROP_SPEED                           # load drop speed
+    div $t9, $t0, $t9                            # see if enough frames have passed to start dropping the pill
+    mfhi $t9                                     # take the remainder (branching is down below to preserve control flow)
     beq $t9, 0, drop            # if enough frames have passed, drop block.
 
     li 		$v0, 32
@@ -784,7 +786,7 @@ sw $t1, 184($s7)
 jr $ra
 
 play_music_prep:
-beq $t8, 46, restart_theme
+bge $t8, 46, restart_theme
 
 
 play_music:
