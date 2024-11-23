@@ -35,7 +35,14 @@ ADDR_KBRD:
     .word 0xffff0000
     
 THEME_SONG:
-.space 184 
+    .space 184 
+
+DIFFICULTY:
+    .word 0x00000001   # 1 = easy, 2 = medium, 3 = hard
+FRAME_COUNTER:
+    .word 0    # used to store how many frames we've gone by (for gravity)
+DROP_SPEED:
+    .word 45
 
 ##############################################################################
 # Mutable Data
@@ -53,7 +60,7 @@ main:
     ######### Display Section
     #################################################################
     # Initialize the game
-    lw $s0, ADDR_DSPL       # Store display address into $t0
+    lw $s0, ADDR_DSPL       # Store display address into $s0
     li $t1, 0xaaaaaa        # Set color of line (grey)
     
     # Left border
@@ -115,47 +122,44 @@ main:
     
 
 game_loop:
-    beq $t9, 13, play_music_prep
+    
     li $v0, 32
 	li $a0, 16
 	syscall
 	
+	### counting frames (for timing purposes) ###
+	lw $t0, FRAME_COUNTER                        # load how many frames we've run through
+    beq $t0, 6000, reset_frame_increase_speed    # reset every 6000 frame to prevent  overflowing
+    addi $t0, $t0, 1                             # increment frame counter by 1
+    sw $t0, FRAME_COUNTER                        # save frame counter
+    div $t9, $t0, 13                             # divide frame counter by 13 to see if we should play new note
+    mfhi $t9                                     # take the remainder
+    beq $t9, 0, play_music_prep                  # play new note if remainder is 0
+    lw $t9, DROP_SPEED                           # load drop speed
+    div $t9, $t0, $t9                            # see if enough frames have passed to start dropping the pill
+    mfhi $t9                                     # take the remainder (branching is down below to preserve control flow)
+
 	game_loop_cont:
     addi $sp, $sp, -4           # save $t9 onto stack    
-    sw $t9, 0($sp)
-    addi $sp, $sp, -4           # save $t9 onto stack    
-    sw $t8, 0($sp)
-    
-    # 1a. Check if key has been pressed
-    # 1b. Check which key has been pressed
+    sw $t8, 0($sp)              # store s8 for the music function
+    beq $t9, 0, drop            # if enough frames have passed, drop block.
+
     li 		$v0, 32
-	li 		$a0, 1
-	syscall
+	li 		$a0, 1             # check for keyboard press
+	syscall    
 	
 	lw $s1, ADDR_KBRD               # $s1 = base address for keyboard
     lw $t8, 0($s1)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
     
-    
-    # 2a. Check for collisions
-        
-    
-	# 2b. Update locations (capsules)
-	init_newpill_exit:
-	# 3. Draw the screen
-	jal draw_pill
-	jal initiate_gravity
-	# 4. Sleep (1/60 second = 166.66... milliseconds
+	init_newpill_exit:             # for control flow's sake
+	jal draw_pill                  # draw pill
+	jal initiate_gravity           # move everything down
+
 	
-	lw $t8, 0($sp) # restore t9 from stack
+	lw $t8, 0($sp) # restore t8 from stack
 	addi $sp, $sp, 4
-	lw $t9, 0($sp) # restore t9 from stack
-	addi $sp, $sp, 4
-	addi $t9, $t9, 1
-	
-	
-    # 5. Go back to Step 1
-    j game_loop
+    j game_loop   # loop back
 
 
 draw_horizontal_line:   # params: a0, a1, a2 (x, y, len) messes with: a0, a1, a2, t2, t3
@@ -780,7 +784,6 @@ sw $t1, 184($s7)
 jr $ra
 
 play_music_prep:
-addi $t9, $zero, 0 # reset frame counter to 0
 beq $t8, 46, restart_theme
 
 
@@ -802,3 +805,10 @@ restart_theme:
 addi, $t8, $zero, 0
 addi, $t6, $zero, 0
 j play_music
+
+reset_frame_increase_speed:
+sw $zero, FRAME_COUNTER     # once we've reached 6000 frames crunched out, we reset the counter to avoid overflowing
+lw $t4, DROP_SPEED          # load drop speed
+addi $t4, $t4, 10           # increase it by 10 frames
+sw $t4, DROP_SPEED          # store drop speed
+j game_loop                  # jump back to game loop
