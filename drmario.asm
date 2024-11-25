@@ -14,6 +14,12 @@
 # - Display height in pixels:   TODO
 # - Base Address for Display:   0x10008000 ($gp)
 ##############################################################################
+
+
+#######  TODO  #######
+# - Game over
+# - Pause Screen
+
     .data
 ##############################################################################
 # Immutable Data
@@ -255,54 +261,15 @@ draw_box:
         addi $t2, $t2, 4                    # move current location by 1 pixel to the right (4 bytes)
         j draw_box_line                     # jump back to start of loop
     draw_box_line_end:
-        bge $t2, $t6, return
+        bge $t2, $t6, return_draw_box
         addi $t2, $t2, 128
         sub $t2, $t2, $t3         # reset the x-coordinate
         add $t5, $t2, $t3        # add the width of box, store in $t5 (8 units right, each unit is 4 bytes)
         j draw_box_line        # jump back to start of loop
     
-    return:
+    return_draw_box:
     lw $ra, 0($sp)              # restore $ra
     addi $sp, $sp, 4           # reset pointer to the calling function
-    jr $ra
-    
-## Draw Box Function
-## Save the calling funtion's return to $t8
-## Parameters: 
-## $a0: Set X coordinate for starting point
-## $a1: Set Y coordinate for starting point
-## $t1: color of box (load intermediate)
-## $t3: width in terms of unit
-## $t4: height in terms of unit  
-store_box:
-    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
-    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
-    
-    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
-    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
-    
-    mult $t3, $t3, 4            # multiply width by size which is 4 bytes
-    add $t5, $t3, $t2         # add the width of box, store in $t3
-    
-    mult $t4, $t4, 128          # multiply height by size which is 128 bytes for each unit
-    add $t6, $t4, $t2         # add the height of box, store in $t4
-    
-    add $t7, $ra, 0            # save the return to $t7     
-    store_box_line:
-        addi $sp, $sp -4
-        sw $t2, 0($sp)                      # store register to stack pointer
-        bge $t2, $t5, store_box_line_end     # break out of look if we've drawn all the pixels in the line
-        addi $t2, $t2, 4                    # move current location by 1 pixel to the right (4 bytes)
-        j store_box_line                     # jump back to start of loop
-    store_box_line_end:
-        bge $t2, $t6, return
-        addi $t2, $t2, 128
-        sub $t2, $t2, $t3         # reset the x-coordinate
-        add $t5, $t2, $t3        # add the width of box, store in $t5 (8 units right, each unit is 4 bytes)
-        j store_box_line        # jump back to start of loop
-    
-    return:
-    addi $ra, $t7, 0              # restore $ra
     jr $ra
 
 
@@ -983,7 +950,7 @@ game_over_state:
     
     li $t1, 0x000000        # color of the box
     add $t3, $zero, 64       # width in terms of unit
-    add $t4, $zero, 128       # height in terms of unit
+    add $t4, $zero, 64       # height in terms of unit
     jal draw_box
     
     addi $ra, $t7, 0
