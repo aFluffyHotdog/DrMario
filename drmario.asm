@@ -14,15 +14,6 @@
 # - Display height in pixels:   TODO
 # - Base Address for Display:   0x10008000 ($gp)
 ##############################################################################
-
-
-#######  TODO  #######
-# - Game over
-# - Pause Screen
-# - 
-
-
-
     .data
 ##############################################################################
 # Immutable Data
@@ -992,7 +983,7 @@ game_over_state:
     
     li $t1, 0x000000        # color of the box
     add $t3, $zero, 64       # width in terms of unit
-    add $t4, $zero, 64       # height in terms of unit
+    add $t4, $zero, 128       # height in terms of unit
     jal draw_box
     
     addi $ra, $t7, 0
