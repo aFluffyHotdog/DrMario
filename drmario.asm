@@ -150,6 +150,7 @@ main:
     counter_setup:
     addi $t9, $zero, 0  # initiate frame counter
     addi $t8, $zero, 0  # initiate music counter
+    
     jal score_display
     
     j game_loop
@@ -198,9 +199,16 @@ game_loop:
 ################################################################################
 ############################# Scoring System ###################################
 ################################################################################
+update_score:
+    addi $t6, $ra, 0
+    jal score_display
+    addi $ra, $t6, 0
+    jr $ra
+    
+
 score_display:
     addi $t7, $ra, 0
-    addi $s1, $s1, 0    # The score uses the $s1 register thought the game
+    addi $s1, $s1, 10000    # The score uses the $s1 register thought the game
     
     # Draw Score Box
     j score_draw_box
@@ -242,6 +250,12 @@ score_draw_text:
     j finish_score_draw_test
 
 score_draw_digit:
+    # The greater then thousands
+    addi $t3, $zero, 9999      # Assign 1000 to $t3 to find the quotient of 4 digit score
+    ble $s1, $t3, score_draw_digit_start
+    add $s1, $zero, 9999
+    
+    score_draw_digit_start:
     # The thousands
     addi $t3, $zero, 1000      # Assign 1000 to $t3 to find the quotient of 4 digit score    
     # First Digit (from left to right)
@@ -1216,7 +1230,7 @@ addi $t4, $t4, 128              # increment t4 by 128 to travel down
 j clear_down
 
 finish_clearing:
-addi $sp, $sp, 4
+addi $sp, $sp, 4    
 jr $ra
 
 temp_exit:
