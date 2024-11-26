@@ -182,7 +182,7 @@ game_loop:
 	li 		$a0, 1             # check for keyboard press
 	syscall    
 	
-	lw $t1, ADDR_KBRD               # $s1 = base address for keyboard
+	lw $t1, ADDR_KBRD               # $t1 = base address for keyboard
     lw $t8, 0($t1)                  # Load first word from keyboard
     beq $t8, 1, control_input      # If first word 1, key is pressed
     
@@ -814,7 +814,7 @@ jr $ra
 # block 2 color is in $s3
 # block 1's memory address is in $s4
 # block 2's memory address is in $s5
-init_pill:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s1, s2, s3, s4
+init_pill:      # params: a0, a1 (x, y) messes with: t3, t4, t5, v0, a0, a1, s2, s3, s4
 addi $a0, $zero, 12     # Set x coordinate for starting point
 addi $a1, $zero, 4      # Set y coordinate for starting point
 addi $s6, $zero, 0      # Set the rotation state back to zero
@@ -1496,7 +1496,7 @@ game_over_loop:
 	li 		$a0, 1             # check for keyboard press
 	syscall    
 	
-	lw $t1, ADDR_KBRD               # $s1 = base address for keyboard
+	lw $t1, ADDR_KBRD               # $t1 = base address for keyboard
     lw $t8, 0($t1)                  # Load first word from keyboard
     beq $t8, 1, game_over_input
        
@@ -1590,7 +1590,7 @@ pause_loop:
 	li 		$a0, 1             # check for keyboard press
 	syscall    
 	
-	lw $t1, ADDR_KBRD               # $s1 = base address for keyboard
+	lw $t1, ADDR_KBRD               # $t1 = base address for keyboard
     lw $t8, 0($t1)                  # Load first word from keyboard
     beq $t8, 1, pause_input
        
