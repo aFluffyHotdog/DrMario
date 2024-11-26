@@ -169,7 +169,6 @@ game_loop:
     mfhi $t9                                     # take the remainder
     beq $t9, 0, play_music_prep                  # play new note if remainder is 0
     
-
 	game_loop_cont:
     addi $sp, $sp, -4           # save $t9 onto stack    
     sw $t8, 0($sp)              # store s8 for the music function
@@ -205,10 +204,9 @@ update_score:
     addi $ra, $t6, 0
     jr $ra
     
-
 score_display:
     addi $t7, $ra, 0
-    addi $s1, $s1, 10000    # The score uses the $s1 register thought the game
+    addi $s1, $s1, 0    # The score uses the $s1 register thought the game
     
     # Draw Score Box
     j score_draw_box
@@ -1151,8 +1149,18 @@ addi $sp, $sp, 4            # move stack pointer back up!!!!
 j temp_exit
 
 clear_horizontal_prep:
+add $s1, $s1, $t5            # test drawing new score TODO: calculate it properly
+
+addi $sp, $sp, -4           # save $ra onto stack         
+sw $ra, 0($sp)
+jal score_display           # display score
+lw $ra, 0($sp)
+addi $sp, $sp, 4
+
 lw $t4, 0($sp)              # we reset the read head, restoring $t4
 lw $t6, 0($t4)                  # load color at current point into $t6
+
+
 clear_left:
     lw $t3, 0($t4)                  # load color at current point into $t3
     bne $t3, $t6, restore_clear1    # while color is still the same as pill it was called on
@@ -1202,10 +1210,28 @@ continue_clear_right:
 
 
 clear_vertical_prep:
+
 lw $t4, 0($sp)                  # we reset the read head, restoring $t4
 lw $t6, 0($t4)                  # load color at current point into $t6
 andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+add $s1, $s1, $t5               # test drawing new score TODO: calculate it properly
 addi $t5, $zero, 0              # initialize t5 as a counter of how much we've cleared
+
+
+addi $sp, $sp, -4
+sw $t4, 0($sp)
+addi $sp, $sp, -4           # save $ra onto stack         
+sw $ra, 0($sp)
+addi $sp, $sp, -4           # save $ra onto stack         
+sw $t6, 0($sp)
+jal score_display           # display score
+
+lw $t6, 0($sp)
+addi $sp, $sp, 4
+lw $ra, 0($sp)
+addi $sp, $sp, 4
+lw $t4, 0($sp)
+addi $sp, $sp, 4
 
 clear_up:
 lw $t3, 0($t4)                  # load color at t4 current point to t3
@@ -1260,6 +1286,19 @@ gravity_loop:
     lw $t5, 4($t3)  # load color to the right into t5
     beq $t5, $zero, move_shit_down_prep  # if right is black go to to move shit down, else check if wall
     bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
+    ### checking for the two floating shits edge case can use t6 here
+    # if color to the right isnt black or wall
+    # if color to right's right is black
+    # else if color to right's right is wall
+    # if color to right's bottom is black
+    # copy move shit down but using t6
+    ### cheeck for 4 in a rows or more (for safety)
+    # lw $t6, 0($t4)              # load color at current point into $t6
+        # andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+        # bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
+        # addi $t5, $t5, 1            # counter +1 
+        # addi $t4, $t4, +4         # traverse down
+        # j check_right                  # keep going down
         move_shit_down_prep:
         addi $t4, $t3, 0    # load $t3 into $t4 since we're going to be messing with it.
         move_shit_down:
