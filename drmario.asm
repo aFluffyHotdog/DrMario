@@ -150,6 +150,8 @@ main:
     counter_setup:
     addi $t9, $zero, 0  # initiate frame counter
     addi $t8, $zero, 0  # initiate music counter
+    jal score_display
+    
     j game_loop
       
 game_loop:
@@ -180,19 +182,512 @@ game_loop:
 	li 		$a0, 1             # check for keyboard press
 	syscall    
 	
-	lw $s1, ADDR_KBRD               # $s1 = base address for keyboard
-    lw $t8, 0($s1)                  # Load first word from keyboard
+	lw $t1, ADDR_KBRD               # $s1 = base address for keyboard
+    lw $t8, 0($t1)                  # Load first word from keyboard
     beq $t8, 1, control_input      # If first word 1, key is pressed
     
 	init_newpill_exit:             # for control flow's sake
 	jal draw_pill                  # draw pill
 	jal initiate_gravity           # move everything down
-
 	
 	lw $t8, 0($sp) # restore t8 from stack
 	addi $sp, $sp, 4
+	
     j game_loop   # loop back 
+    
+################################################################################
+############################# Scoring System ###################################
+################################################################################
+score_display:
+    addi $t7, $ra, 0
+    addi $s1, $s1, 0    # The score uses the $s1 register thought the game
+    
+    # Draw Score Box
+    j score_draw_box
+    finish_score_draw_box:
+    
+    li $t1, 0xffffff    # color of the text
+    # Draw Score Text
+    j score_draw_text
+    finish_score_draw_test:
+    
+    # Draw Score Digits
+    j score_draw_digit
+    finish_score_draw_digit:
+    
+    addi $ra, $t7, 0
+    jr $ra
+    
+score_draw_text:
+    addi $a0, $zero, 6      # Set X coordinate for starting point
+    addi $a1, $zero, 35      # Set Y coordinate for starting point
+    jal draw_s
+    
+    addi $a0, $zero, 10      # Set X coordinate for starting point
+    addi $a1, $zero, 35      # Set Y coordinate for starting point
+    jal draw_c
+    
+    addi $a0, $zero, 14      # Set X coordinate for starting point
+    addi $a1, $zero, 35      # Set Y coordinate for starting point
+    jal draw_o
+    
+    addi $a0, $zero, 18      # Set X coordinate for starting point
+    addi $a1, $zero, 35      # Set Y coordinate for starting point
+    jal draw_r
+    
+    addi $a0, $zero, 22      # Set X coordinate for starting point
+    addi $a1, $zero, 35      # Set Y coordinate for starting point
+    jal draw_e
+    
+    j finish_score_draw_test
 
+score_draw_digit:
+    # The thousands
+    addi $t3, $zero, 1000      # Assign 1000 to $t3 to find the quotient of 4 digit score    
+    # First Digit (from left to right)
+    addi $a0, $zero, 8      # Set X coordinate for starting point
+    addi $a1, $zero, 41      # Set Y coordinate for starting point
+    div $s1, $t3             # From MARS docs: set the lo to quotient and hi to remainder
+    mflo $t4                 # Assign the quotient to $t4
+    jal score_draw_digit_state
+    
+    # The hundreds
+    addi $t3, $zero, 100      # Assign 10 to $t3 to find the quotient of 3 digit score
+    # Second Digit
+    addi $a0, $zero, 12      # Set X coordinate for starting point
+    addi $a1, $zero, 41      # Set Y coordinate for starting point
+    mfhi $t4                 # Get the remainder from the previous division by 1000
+    div $t4, $t3             # From MARS docs: set the lo to quotient and hi to remainder
+    mflo $t4                 # Assign the quotient to $t4
+    jal score_draw_digit_state
+    
+    # The tens
+    addi $t3, $zero, 10      # Assign 10 to $t3 to find the quotient and remainder of 2 digit score
+    # Third Digit
+    addi $a0, $zero, 16      # Set X coordinate for starting point
+    addi $a1, $zero, 41      # Set Y coordinate for starting point
+    mfhi $t4                 # Get the remainder from the previous division by 100
+    div $t4, $t3             # From MARS docs: set the lo to quotient and hi to remainder
+    mflo $t4                 # Assign the quotient to $t4
+    jal score_draw_digit_state
+    
+    # Fourth Digit
+    addi $a0, $zero, 20      # Set X coordinate for starting point
+    addi $a1, $zero, 41      # Set Y coordinate for starting point
+    mfhi $t4                 # Assign the remainder to $t4
+    jal score_draw_digit_state
+            
+    j finish_score_draw_digit
+
+score_draw_digit_state:
+    addi $t9, $ra, 0
+    addi $t5, $zero, 0       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_0
+    
+    addi $t5, $zero, 1       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_1
+    
+    addi $t5, $zero, 2       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_2
+    
+    addi $t5, $zero, 3       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_3
+    
+    addi $t5, $zero, 4       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_4
+    
+    addi $t5, $zero, 5       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_5
+    
+    addi $t5, $zero, 6      # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_6
+    
+    addi $t5, $zero, 7       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_7
+    
+    addi $t5, $zero, 8       # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_8
+    
+    addi $t5, $zero, 9      # the counter to determine the digits to be drawn
+    beq $t4, $t5, draw_9
+    
+    addi $ra, $t9, 0
+    jr $ra
+    
+score_draw_box:
+    # Reset Registers
+    add $t0, $zero, 0
+    add $t1, $zero, 0
+    add $t2, $zero, 0
+    add $t3, $zero, 0
+    add $t4, $zero, 0
+    add $t5, $zero, 0
+    add $t6, $zero, 0
+    
+    ## Drawing Outer Box
+    addi $a0, $zero, 4      # Set X coordinate for starting point
+    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    
+    
+    li $t1, 0xc4b200        # color of the box
+    add $t3, $zero, 22       # width in terms of unit
+    add $t4, $zero, 14       # height in terms of unit
+    jal draw_box
+    
+    # Reset Registers
+    add $t0, $zero, 0
+    add $t1, $zero, 0
+    add $t2, $zero, 0
+    add $t3, $zero, 0
+    add $t4, $zero, 0
+    add $t5, $zero, 0
+    add $t6, $zero, 0
+    
+    ## Drawing Inner Box
+    addi $a0, $zero, 5      # Set X coordinate for starting point
+    addi $a1, $zero, 34      # Set Y coordinate for starting point
+    
+    li $t1, 0x023020        # color of the box
+    add $t3, $zero, 20       # width in terms of unit
+    add $t4, $zero, 12       # height in terms of unit
+    jal draw_box
+
+    j finish_score_draw_box
+
+################################################################################
+################################ Draw Digits ###################################
+################################################################################
+draw_9:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+
+draw_8:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+draw_7:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+draw_6:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+draw_5:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+draw_4:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+draw_3:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+
+draw_2:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+
+draw_1:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+draw_0:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+    
+            
 ################################################################################
 ############################# Draw Functions ###################################
 ################################################################################
@@ -396,7 +891,7 @@ jr $ra
 ########################## Movement and Controls ###############################
 ################################################################################
 control_input:                     # A key is pressed
-    lw $a0, 4($s1)                  # Load second word from keyboard
+    lw $a0, 4($t1)                  # Load second word from keyboard
     
     ## Movement and Control Scanner ##
     # Move left 
@@ -949,49 +1444,49 @@ game_over_state:
     addi $a1, $zero, 1      # Set Y coordinate for starting point
     
     li $t1, 0x000000        # color of the box
-    add $t3, $zero, 64       # width in terms of unit
-    add $t4, $zero, 64       # height in terms of unit
+    add $t3, $zero, 64       # height in terms of unit
+    add $t4, $zero, 32       # height in terms of unit
     jal draw_box
-    
     addi $ra, $t7, 0
     
     # top left border
     ## 16x16 is center
+    addi $ra, $t7, 0
     
     jal draw_game_over_box
     
     ## Drawing Text
     li $t1, 0xffffff    # color of the text
     addi $a0, $zero, 5      # Set X coordinate for starting point
-    addi $a1, $zero, 5      # Set Y coordinate for starting point
+    addi $a1, $zero, 7      # Set Y coordinate for starting point
     jal draw_g_large
     
     addi $a0, $zero, 10      # Set X coordinate for starting point
-    addi $a1, $zero, 5      # Set Y coordinate for starting point
+    addi $a1, $zero, 7      # Set Y coordinate for starting point
     jal draw_a_large
     
     addi $a0, $zero, 15      # Set X coordinate for starting point
-    addi $a1, $zero, 5      # Set Y coordinate for starting point
+    addi $a1, $zero, 7      # Set Y coordinate for starting point
     jal draw_m_large
     
     addi $a0, $zero, 23      # Set X coordinate for starting point
-    addi $a1, $zero, 5      # Set Y coordinate for starting point
+    addi $a1, $zero, 7      # Set Y coordinate for starting point
     jal draw_e_large
     
     addi $a0, $zero, 7      # Set X coordinate for starting point
-    addi $a1, $zero, 15      # Set Y coordinate for starting point
+    addi $a1, $zero, 17      # Set Y coordinate for starting point
     jal draw_o_large
     
     addi $a0, $zero, 12      # Set X coordinate for starting point
-    addi $a1, $zero, 15      # Set Y coordinate for starting point
+    addi $a1, $zero, 17      # Set Y coordinate for starting point
     jal draw_v_large
     
     addi $a0, $zero, 17      # Set X coordinate for starting point
-    addi $a1, $zero, 15      # Set Y coordinate for starting point
+    addi $a1, $zero, 17      # Set Y coordinate for starting point
     jal draw_e_large
     
     addi $a0, $zero, 22      # Set X coordinate for starting point
-    addi $a1, $zero, 15      # Set Y coordinate for starting point
+    addi $a1, $zero, 17      # Set Y coordinate for starting point
     jal draw_r_large
     
     j game_over_loop
@@ -1001,14 +1496,14 @@ game_over_loop:
 	li 		$a0, 1             # check for keyboard press
 	syscall    
 	
-	lw $s1, ADDR_KBRD               # $s1 = base address for keyboard
-    lw $t8, 0($s1)                  # Load first word from keyboard
+	lw $t1, ADDR_KBRD               # $s1 = base address for keyboard
+    lw $t8, 0($t1)                  # Load first word from keyboard
     beq $t8, 1, game_over_input
        
     j game_over_loop
 
 game_over_input:
-    lw $a0, 4($s1)                  # Load second word from keyboard
+    lw $a0, 4($t1)                  # Load second word from keyboard
     beq $a0, 0x72, restart_state         # Check if the key R was pressed
     beq $a0, 0x71, quit         # Check if the key Q was pressed
     j game_over_loop
@@ -1026,7 +1521,7 @@ draw_game_over_box:
     
     ## Drawing Outer Box
     addi $a0, $zero, 3      # Set X coordinate for starting point
-    addi $a1, $zero, 3      # Set Y coordinate for starting point
+    addi $a1, $zero, 5      # Set Y coordinate for starting point
     
     li $t1, 0xc4b200        # color of the box
     add $t3, $zero, 25       # width in terms of unit
@@ -1044,7 +1539,7 @@ draw_game_over_box:
     
     ## Drawing Inner Box
     addi $a0, $zero, 4      # Set X coordinate for starting point
-    addi $a1, $zero, 4      # Set Y coordinate for starting point
+    addi $a1, $zero, 6      # Set Y coordinate for starting point
     
     li $t1, 0x0000ff        # color of the box
     add $t3, $zero, 23       # width in terms of unit
@@ -1064,28 +1559,28 @@ pause_state:
     jal draw_pause_box
     
     li $t1, 0xffffff    # color of the text
-    addi $a0, $zero, 5      # Set X coordinate for starting point
-    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    addi $a0, $zero, 4      # Set X coordinate for starting point
+    addi $a1, $zero, 52      # Set Y coordinate for starting point
     jal draw_p
     
-    addi $a0, $zero, 9      # Set X coordinate for starting point
-    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    addi $a0, $zero, 8      # Set X coordinate for starting point
+    addi $a1, $zero, 52      # Set Y coordinate for starting point
     jal draw_a
     
-    addi $a0, $zero, 13      # Set X coordinate for starting point
-    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    addi $a0, $zero, 12      # Set X coordinate for starting point
+    addi $a1, $zero, 52      # Set Y coordinate for starting point
     jal draw_u
     
-    addi $a0, $zero, 17      # Set X coordinate for starting point
-    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    addi $a0, $zero, 16      # Set X coordinate for starting point
+    addi $a1, $zero, 52      # Set Y coordinate for starting point
     jal draw_s
     
-    addi $a0, $zero, 21      # Set X coordinate for starting point
-    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    addi $a0, $zero, 20      # Set X coordinate for starting point
+    addi $a1, $zero, 52      # Set Y coordinate for starting point
     jal draw_e
     
-    addi $a0, $zero, 25      # Set X coordinate for starting point
-    addi $a1, $zero, 33      # Set Y coordinate for starting point
+    addi $a0, $zero, 24      # Set X coordinate for starting point
+    addi $a1, $zero, 52      # Set Y coordinate for starting point
     jal draw_d
     
     j pause_loop
@@ -1095,14 +1590,14 @@ pause_loop:
 	li 		$a0, 1             # check for keyboard press
 	syscall    
 	
-	lw $s1, ADDR_KBRD               # $s1 = base address for keyboard
-    lw $t8, 0($s1)                  # Load first word from keyboard
+	lw $t1, ADDR_KBRD               # $s1 = base address for keyboard
+    lw $t8, 0($t1)                  # Load first word from keyboard
     beq $t8, 1, pause_input
        
     j pause_loop
 
 pause_input:
-    lw $a0, 4($s1)                  # Load second word from keyboard
+    lw $a0, 4($t1)                  # Load second word from keyboard
     beq $a0, 0x70, upause_state         # Check if the key p was pressed
     jr $ra
     
@@ -1115,9 +1610,9 @@ upause_state:
     add $t5, $zero, 0
     add $t6, $zero, 0
     
-    ## Remove Pause Box
     addi $a0, $zero, 3      # Set X coordinate for starting point
-    addi $a1, $zero, 31      # Set Y coordinate for starting point
+    addi $a0, $zero, 2      # Set X coordinate for starting point
+    addi $a1, $zero, 50      # Set Y coordinate for starting point
     li $t1, 0x000000        # color of the box
     add $t3, $zero, 26       # width in terms of unit
     add $t4, $zero, 8       # height in terms of unit
@@ -1140,8 +1635,8 @@ draw_pause_box:
     add $t6, $zero, 0
     
     ## Drawing Outer Box
-    addi $a0, $zero, 3      # Set X coordinate for starting point
-    addi $a1, $zero, 31      # Set Y coordinate for starting point
+    addi $a0, $zero, 2      # Set X coordinate for starting point
+    addi $a1, $zero, 50      # Set Y coordinate for starting point
     
     li $t1, 0xc4b200        # color of the box
     add $t3, $zero, 26       # width in terms of unit
@@ -1158,8 +1653,8 @@ draw_pause_box:
     add $t6, $zero, 0
     
     ## Drawing Inner Box
-    addi $a0, $zero, 4      # Set X coordinate for starting point
-    addi $a1, $zero, 32      # Set Y coordinate for starting point
+    addi $a0, $zero, 3      # Set X coordinate for starting point
+    addi $a1, $zero, 51      # Set Y coordinate for starting point
     
     li $t1, 0x0000ff        # color of the box
     add $t3, $zero, 24       # width in terms of unit
@@ -1176,7 +1671,110 @@ draw_pause_box:
 
 
 
-## Draw alphanumeric
+################################################################################
+################################ Draw Letters ##################################
+################################################################################
+draw_r:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    
+    jr $ra
+
+draw_o:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+
+draw_c:
+    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
+    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
+    
+    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
+    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 4
+    
+    add $t2, $t2, 120
+    sw $t1, 0($t2)
+    add $t2, $t2, 8
+    
+    add $t2, $t2, 120
+    
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    add $t2, $t2, 4
+    sw $t1, 0($t2)
+    jr $ra
+
+
+
 draw_d:
     sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
     sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
@@ -1373,40 +1971,6 @@ draw_p:
     
     add $t2, $t2, 4
     
-    jr $ra
-    
-    
-draw_8:
-    sll $a0, $a0, 2         # shift the X value by 2 bits (multiplying it by 4 to get to the next column)
-    sll $a1, $a1, 7         # shift the Y value by 7 bits (multiplying it by 128 to get to the row we wanted :D)
-    
-    add $t2, $s0, $a0       # add the X offset to $s0, store in $t2
-    add $t2, $t2, $a1       # add the Y offset to $s0, store in $t2
-    sw $t1, 0($t2)          # draw (value of $t1) at current location of $t2
-    add $t2, $t2, 4
-    sw $t1, 0($t2)
-    add $t2, $t2, 4
-    sw $t1, 0($t2)
-    add $t2, $t2, 120
-    sw $t1, 0($t2)
-    add $t2, $t2, 8
-    sw $t1, 0($t2)
-    add $t2, $t2, 120
-    sw $t1, 0($t2)
-    add $t2, $t2, 4
-    sw $t1, 0($t2)
-    add $t2, $t2, 4
-    sw $t1, 0($t2)
-    add $t2, $t2, 120
-    sw $t1, 0($t2)
-    add $t2, $t2, 8
-    sw $t1, 0($t2)
-    add $t2, $t2, 120
-    sw $t1, 0($t2)
-    add $t2, $t2, 4
-    sw $t1, 0($t2)
-    add $t2, $t2, 4
-    sw $t1, 0($t2)
     jr $ra
     
 draw_r_large:
