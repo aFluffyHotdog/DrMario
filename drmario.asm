@@ -36,7 +36,7 @@ THEME_SONG:
     .space 188
 
 DIFFICULTY:
-    .word 2   # 1 = easy, 2 = medium, 3 = hard
+    .word 1   # 1 = easy, 2 = medium, 3 = hard
 FRAME_COUNTER:
     .word 0    # used to store how many frames we've gone by (for gravity)
 DROP_SPEED:
@@ -1196,6 +1196,8 @@ lw $t6, 0($t4)                  # load color at current point into $t6
 
 clear_left:
     lw $t3, 0($t4)                  # load color at current point into $t3
+    andi $t3, $t3, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
     bne $t3, $t6, restore_clear1    # while color is still the same as pill it was called on
     sw $zero, 0($t4)                # paint the screen at $t4 black
     ### start the move things above down loop ###
@@ -1203,8 +1205,20 @@ clear_left:
     # jal move_things_down
         move_things_down:
         lw $t7, -128($t5)                       # use $t7 to store color above
-        beq $t7, $zero, continue_clear_left     # while above is not black
+        addi $t0, $t5, -128
+        beq $t5, $s4, is_internal_block1_1
+        beq $t5, $s5, is_internal_block2_1
+        j still_clear_left
+        is_internal_block1_1:
+        addi $s4, $s4, -128
+        j still_clear_left
+        is_internal_block2_1:
+        addi $s5, $s5, -128
+        j still_clear_left
         # TODO: check if it's a virus
+        still_clear_left:
+        # TODO: check if it's a virus
+        beq $t7, $zero, continue_clear_left     # while above is not black
         sw $t7, 0($t5)                          # write above pixel onto where t5 is
         sw $zero, -128($t5)                     # paint the above area zero.
         addi $t5, $t5, -128                     # traverse up
@@ -1222,15 +1236,27 @@ addi $t4, $t4, 4            # shift head by 1 unit to the right, since we alread
 
 clear_right:
     lw $t3, 0($t4)                  # load color at current point into $t6
+    andi $t3, $t3, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
     bne $t3, $t6, temp_exit    # while color is still the same as pill it was called on
     sw $zero, 0($t4)                # paint the screen at $t4 black
     ### start the move things above down loop ###
     addi $t5, $t4, 0                        # use $t5 as a pointer for where we are
     # jal move_things_down
         move_things_down2:
-        lw $t7, -128($t5)                       # use $t7 to store color above
-        beq $t7, $zero, continue_clear_right     # while above is not black
+        addi $t0, $t5, -128
+        beq $t5, $s4, is_internal_block1_2
+        beq $t5, $s5, is_internal_block2_2
+        j still_clear_right
+        is_internal_block1_2:
+        addi $s4, $s4, -128
+        j still_clear_right
+        is_internal_block2_2:
+        addi $s5, $s5, -128
+        j still_clear_right
         # TODO: check if it's a virus
+        still_clear_right:
+        beq $t7, $zero, continue_clear_right     # while above is not black
         sw $t7, 0($t5)                          # write above pixel onto where t5 is
         sw $zero, -128($t5)                     # paint the above area zero
         addi $t5, $t5, -128                     # traverse up
@@ -1317,10 +1343,10 @@ gravity_loop:
     lw $t4, 0($t3)  # load color at current point
     addi $sp, $sp, -4           # save $t8 onto stack         
     sw $t8, 0($sp)
-    beq $zero, $t4, gravity_loop_cont  # if curr not black, if curr is black: go to pointer +4
-    andi $t7, $t4, 0x0F     # check if current pixel is a virus (the last hex digit is a 1)
-    beq $t7, 1, gravity_loop_cont
-    beq $t3, $s4, gravity_loop_cont  # don't clear if we're checking the active pill
+    beq $zero, $t4, gravity_loop_cont           # if curr not black, if curr is black: go to pointer +4
+    andi $t7, $t4, 0x0F                         # check if current pixel is a virus (the last hex digit is a 1)
+    beq $t7, 1, gravity_loop_cont               # if pixel is virus we don't move it down
+    beq $t3, $s4, gravity_loop_cont             # don't clear if we're checking the active pill
     beq $t3, $s5, gravity_loop_cont  # don't clear if we're checking the active pill   
     lw $t5, 128($t3) # load color below curr
     bne $t5, $zero, gravity_loop_cont  # increment if down below isn't black
@@ -1331,6 +1357,15 @@ gravity_loop:
     lw $t5, 4($t3)  # load color to the right into t5
     beq $t5, $zero, move_shit_down_prep  # if right is black go to to move shit down, else check if wall
     bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
+    
+    ### cheeck for 4 in a rows or more (for safety)   
+    lw $t6, 0($t4)              # load color at current point into $t6
+        # andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+        # bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
+        # addi $t5, $t5, 1            # counter +1 
+        # addi $t4, $t4, +4         # traverse down
+        # j check_right                  # keep going down
+    
     
     ### checking for the two floating shits edge case can use t8 here
     lw $t8, 8($t3) # load right of right to t8  8(t3)
@@ -1346,13 +1381,7 @@ gravity_loop:
     # else if color to right's right is wall
     # if color to right's bottom is black
     # copy move shit down but using t6
-    ### cheeck for 4 in a rows or more (for safety)   
-    # lw $t6, 0($t4)              # load color at current point into $t6
-        # andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
-        # bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
-        # addi $t5, $t5, 1            # counter +1 
-        # addi $t4, $t4, +4         # traverse down
-        # j check_right                  # keep going down
+   
         move_shit_down_prep:
         addi $t4, $t3, 0    # load $t3 into $t4 since we're going to be messing with it.
         move_shit_down:
