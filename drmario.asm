@@ -36,7 +36,7 @@ THEME_SONG:
     .space 188
 
 DIFFICULTY:
-    .word 1   # 1 = easy, 2 = medium, 3 = hard
+    .word 2   # 1 = easy, 2 = medium, 3 = hard
 FRAME_COUNTER:
     .word 0    # used to store how many frames we've gone by (for gravity)
 DROP_SPEED:
@@ -190,7 +190,7 @@ game_loop:
 	jal draw_pill                  # draw pill
 	jal initiate_gravity           # move everything down
 	
-	lw $t8, 0($sp) # restore t8 from stack
+	lw $t8, 0($sp) # restore t8 from stack for playing music
 	addi $sp, $sp, 4
 	
     j game_loop   # loop back 
@@ -866,7 +866,7 @@ li $s2, 0xff0000        #store color into $s2
 j init_second_block
 draw_blue:
 sw $t5, 0($t2)
-li $s2, 0x0000ff        #store color into $s2
+li $s2, 0x0000fe        #store color into $s2
 j init_second_block
 
 init_second_block:
@@ -1081,6 +1081,7 @@ check_clear_block1:
     addi $sp, $sp, -4           # initialize reading pointer     
     sw $t4, 0($sp)              # store original position into stack
     addi $t5, $zero, 0            # initialize our counter
+    addi $t8, $zero, 0          # initialize virus counter
     j check_left
 
 check_clear_block2: 
@@ -1089,12 +1090,18 @@ check_clear_block2:
     add $t4, $zero, $s5     #load block 1 pos, we'll use this as our read head
     addi $sp, $sp, -4           # initialize reading pointer     
     sw $t4, 0($sp)              # store original position into stack
-    addi $t5, $zero, 0            # initialize our counter
+    addi $t5, $zero, 0          # initialize our counter
+    addi $t8, $zero, 0          # initialize virus counter
     j check_left
       
 check_left:
     lw $t6, 0($t4)                  # load color at current point into $t6
     andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    andi $t7, $t6, 0x000001         # check if we've hit a virus, use t8 as virus counter
+    bne $t7, 1, continue_check_left # if not virus keep going
+    addi $t8, $t8, 1                # increment counter if virus found                          
+    continue_check_left:
+
     bne $t3, $t6, restore_checker1    # while color is still the same as pill it was called on
         addi $t5, $t5, 1                # counter +1 
         addi $t4, $t4, -4               # traverse left
@@ -1107,6 +1114,10 @@ restore_checker1:
 check_right:
     lw $t6, 0($t4)              # load color at current point into $t6
     andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    andi $t7, $t6, 0x000001         # check if we've hit a virus, use t8 as virus counter
+    bne $t7, 1, continue_check_right# if not virus keep going
+    addi $t8, $t8, 1                # increment counter if virus found                          
+    continue_check_right:
     bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
         addi $t5, $t5, 1            # counter +1 
         addi $t4, $t4, +4         # traverse down
@@ -1116,10 +1127,15 @@ check_transition:
     bge $t5, 4, clear_horizontal_prep         # if counter >= 4,
     lw $t4, 0($sp)              # we reset the read head, restoring $t4
     addi $t5, $zero, 0          # reset the counter
+    addi $t8, $zero, 0          # also reset virus counter
 
 check_up:
     lw $t6, 0($t4)              # load color at current point into $t6
+    andi $t7, $t6, 0x000001         # check if we've hit a virus, use t8 as virus counter
     andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    bne $t7, 1, continue_check_up# if not virus keep going
+    addi $t8, $t8, 1                # increment counter if virus found
+    continue_check_up:
     bne $t3, $t6, restore_check_head2    # while color is still the same as pill it was called on
         addi $t5, $t5, 1            # counter +1 
         addi $t4, $t4, -128         # traverse up
@@ -1131,7 +1147,11 @@ restore_check_head2:
 
 check_down:
     lw $t6, 0($t4)              # load color at current point into $t6
+    andi $t7, $t6, 0x000001         # check if we've hit a virus, use t8 as virus counter
     andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+    bne $t7, 1, continue_check_down# if not virus keep going
+    addi $t8, $t8, 1                # increment counter if virus found
+    continue_check_down:
     bne $t3, $t6, check_if_four_vertical   # while color is still the same as pill it was called on
     addi $t5, $t5, 1            # counter +1 
     addi $t4, $t4, +128         # traverse down
@@ -1150,7 +1170,20 @@ j temp_exit
 
 clear_horizontal_prep:
 add $s1, $s1, $t5            # test drawing new score TODO: calculate it properly
-
+beq $t8, 0, no_virus1
+mult $t8, $t8, 5            # add 5 for each virus
+add $t5, $t5, $t8           # add the virus bonus to score 
+no_virus1:
+lw $t0, DIFFICULTY
+medium_mult1:
+bne $t0, 2, hard_mult1
+mult $t5, $t5, 5
+j display_score_before_clear1
+hard_mult1:
+bne $t0, 3, display_score_before_clear1
+mult $t5, $t5, 10
+display_score_before_clear1:
+add $s1, $s1, $t5           # add score from t8
 addi $sp, $sp, -4           # save $ra onto stack         
 sw $ra, 0($sp)
 jal score_display           # display score
@@ -1214,15 +1247,26 @@ clear_vertical_prep:
 lw $t4, 0($sp)                  # we reset the read head, restoring $t4
 lw $t6, 0($t4)                  # load color at current point into $t6
 andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
+beq $t8, 0, no_virus2
+mult $t8, $t8, 5            # add 5 for each virus
+add $t5, $t5, $t8           # add the virus bonus to score 
+no_virus2:
+lw $t0, DIFFICULTY
+medium_mult2:
+bne $t0, 2, hard_mult2
+mult $t5, $t5, 5
+j display_score_before_clear2
+hard_mult2:
+bne $t0, 3, display_score_before_clear2
+mult $t5, $t5, 10
+display_score_before_clear2:
 add $s1, $s1, $t5               # test drawing new score TODO: calculate it properly
 addi $t5, $zero, 0              # initialize t5 as a counter of how much we've cleared
-
-
 addi $sp, $sp, -4
 sw $t4, 0($sp)
 addi $sp, $sp, -4           # save $ra onto stack         
 sw $ra, 0($sp)
-addi $sp, $sp, -4           # save $ra onto stack         
+addi $sp, $sp, -4           # save $t6 onto stack         
 sw $t6, 0($sp)
 jal score_display           # display score
 
