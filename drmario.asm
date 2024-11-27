@@ -1315,8 +1315,9 @@ addi $t3, $s0, 660 # initiate pointer at top left of bottle x = 5, y =5
 gravity_loop:
     beq $t3, 0x10008D00 , temp_exit # check if we're beyond bound of bottle o
     lw $t4, 0($t3)  # load color at current point
+    addi $sp, $sp, -4           # save $t8 onto stack         
+    sw $t8, 0($sp)
     beq $zero, $t4, gravity_loop_cont  # if curr not black, if curr is black: go to pointer +4
-    # TODO: if curr not virus, else: go to pointer +4
     andi $t7, $t4, 0x0F     # check if current pixel is a virus (the last hex digit is a 1)
     beq $t7, 1, gravity_loop_cont
     beq $t3, $s4, gravity_loop_cont  # don't clear if we're checking the active pill
@@ -1330,13 +1331,22 @@ gravity_loop:
     lw $t5, 4($t3)  # load color to the right into t5
     beq $t5, $zero, move_shit_down_prep  # if right is black go to to move shit down, else check if wall
     bne $t5, 0xaaaaaa, gravity_loop_cont # if right is wall go to move shit down
-    ### checking for the two floating shits edge case can use t6 here
+    
+    ### checking for the two floating shits edge case can use t8 here
+    lw $t8, 8($t3) # load right of right to t8  8(t3)
+    beq $t8, $zero, right_of_right_is_blank # if t8 black else jump to gravity loop cont
+    beq $t8, 0xaaaaaa, right_of_right_is_blank # if t8 wall else jump to gravity loop cont
+    j gravity_loop_cont  # right of right is not free
+    right_of_right_is_blank:
+    lw $t8, 132($t3) # load bottom of t8 into t8  132(t3)
+    bne $t8, $zero, gravity_loop_cont # bne bottom is not black, continue the loop
+    
     # if color to the right isnt black or wall
     # if color to right's right is black
     # else if color to right's right is wall
     # if color to right's bottom is black
     # copy move shit down but using t6
-    ### cheeck for 4 in a rows or more (for safety)
+    ### cheeck for 4 in a rows or more (for safety)   
     # lw $t6, 0($t4)              # load color at current point into $t6
         # andi $t6, $t6, 0xfffff0         # mask the current pixel's color to make sure we don't skip the virus
         # bne $t3, $t6, check_transition   # while color is still the same as pill it was called on
@@ -1354,6 +1364,8 @@ gravity_loop:
         addi $t4, $t4, 128  # increment t4
         j move_shit_down
     gravity_loop_cont:
+    lw $t8, 0($sp)          # restore t8
+    addi $sp, $sp, 4        # restore stack pointer
     addi $t3, $t3, 4 # pointer + 4
     j gravity_loop
     
