@@ -1,4 +1,4 @@
-Dr. Mario coded in Assembly, to be turned in as the final project for CSC258, Computer Organization. 
+Dr. Mario coded in Assembly, to be turned in as the final project for CSC[Redacted for plagiarism prevention reasons]. 
 Made by Kenaz and Mac
 
 Milestones:
