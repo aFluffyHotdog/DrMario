@@ -1,4 +1,4 @@
-Dr. Mario coded in Assembly, to be turned in as the final project for CSC[Redacted for plagiarism prevention reasons]. 
+Dr. Wario coded in Assembly, to be turned in as the final project for CSC[Redacted to prevent plagiarism]. 
 Made by Kenaz and Mac
 
 Milestones:
